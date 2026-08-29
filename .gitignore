@@ -42,3 +42,9 @@ bun.lockb
 
 # Turbo
 .turbo
+
+# Generated storage files
+storage/sertifikat/*
+!storage/sertifikat/.gitkeep
+storage/ttd/*
+!storage/ttd/.gitkeep

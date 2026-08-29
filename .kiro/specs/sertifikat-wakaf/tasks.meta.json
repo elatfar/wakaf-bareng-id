@@ -1,0 +1,769 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Buat file `shared/src/types/donatur.ts` dengan interface `Donatur` dan `BuatDonaturInput`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859188
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009876370
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011260143
+      }
+    ],
+    "1.2 Buat file `shared/src/types/program.ts` dengan interface `Program` dan `BuatProgramInput`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859235
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009877270
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011261003
+      }
+    ],
+    "1.3 Buat file `shared/src/types/pengguna.ts` dengan type `Role`, interface `Pengguna`, `BuatPenggunaInput`, `LoginInput`, `LoginResponse`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859276
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009878182
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011262421
+      }
+    ],
+    "1.4 Buat file `shared/src/types/penandatangan.ts` dengan interface `Penandatangan` dan `BuatPenandatanganInput`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859340
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009879197
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011263346
+      }
+    ],
+    "1.5 Buat file `shared/src/types/transaksi.ts` dengan interface `Transaksi`, `TransaksiDetail`, dan `BuatTransaksiInput`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859382
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009880163
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011264323
+      }
+    ],
+    "1.6 Buat file `shared/src/types/sertifikat.ts` dengan interface `Sertifikat` dan `SertifikatDetail`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859423
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009881038
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011265233
+      }
+    ],
+    "1.7 Buat file `shared/src/types/template.ts` dengan interface `LayoutFieldItem`, `LayoutField`, `TemplateSertifikat`, `TemplateSertifikatDetail`, dan `BuatTemplateInput`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859481
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009882049
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011266319
+      }
+    ],
+    "1.8 Buat file `shared/src/types/index.ts` dengan interface `ApiResponse<T>` dan re-export semua types": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859538
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009882917
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011267383
+      }
+    ],
+    "1.9 Update `shared/src/index.ts` untuk re-export dari `./types`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859583
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009883815
+      },
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011268327
+      }
+    ],
+    "2.1 Tambahkan dependencies database ke `server/package.json`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859628
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875003
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014892616
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015006598
+      }
+    ],
+    "2.2 Buat file `server/.env` dengan `DATABASE_URL` ke Neon PostgreSQL": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859671
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875150
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014893496
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015007365
+      }
+    ],
+    "2.3 Buat file `server/src/db/schema.ts` dengan Drizzle pgTable schema": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859727
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875284
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015014489
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015496249
+      }
+    ],
+    "2.4 Buat file `server/src/db/client.ts` dengan koneksi postgres-js dan drizzle instance": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859793
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875410
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015014622
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015497265
+      }
+    ],
+    "2.5 Buat file `drizzle.config.ts` di root `server/` untuk drizzle-kit": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859862
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875537
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015015583
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015498296
+      }
+    ],
+    "2.6 Jalankan `bunx drizzle-kit push` untuk push schema ke Neon (atau generate + apply migrations)": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859905
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875712
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015504582
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015670303
+      }
+    ],
+    "3.1 Buat `server/src/lib/terbilang.ts` — fungsi `angkaKeTerbilang(n: number): string`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859950
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875830
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015678018
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016236807
+      }
+    ],
+    "3.3 Buat `server/src/lib/nomor.ts` — fungsi `generateNomor(prefix, db): Promise<string>`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009859998
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014875936
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015678810
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016237603
+      }
+    ],
+    "3.5 Buat `server/src/lib/pdf.ts` — fungsi `renderSertifikatPDF(data, template): Promise<string>`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860063
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876044
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015679779
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016238628
+      }
+    ],
+    "4. Checkpoint — Verifikasi library modules": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860139
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876144
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016245668
+      }
+    ],
+    "5.1 Buat `server/src/middleware/auth.ts` — verifikasi JWT Bearer token": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860188
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876236
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016273554
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016697759
+      }
+    ],
+    "5.2 Buat `server/src/middleware/role.ts` — factory `requireRole(roles: Role[])`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860266
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876334
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016273949
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016698494
+      }
+    ],
+    "6.1 Buat `server/src/routes/auth.ts` — `POST /auth/login`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860312
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876430
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016706260
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019526276
+      }
+    ],
+    "6.2 Buat `server/src/routes/pengguna.ts` — CRUD pengguna": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860355
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876528
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019537359
+      }
+    ],
+    "6.3 Buat `server/src/routes/donatur.ts` — CRUD donatur": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860397
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876628
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016707287
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019527020
+      }
+    ],
+    "7.1 Buat `server/src/routes/program.ts` — CRUD program wakaf": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860446
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876738
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016708107
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019527868
+      }
+    ],
+    "7.3 Buat `server/src/routes/penandatangan.ts` — CRUD penandatangan": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860489
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876838
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016709178
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019528865
+      }
+    ],
+    "7.4 Buat `server/src/routes/template.ts` — CRUD template sertifikat": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860535
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014876943
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016709936
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019529657
+      }
+    ],
+    "8.1 Buat `server/src/routes/transaksi.ts` — CRUD transaksi": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860583
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877039
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019539543
+      }
+    ],
+    "8.3 Buat `server/src/routes/sertifikat.ts` — generate dan akses sertifikat": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860628
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877140
+      }
+    ],
+    "9.1 Buat direktori `storage/sertifikat/`, `storage/backgrounds/`, `storage/ttd/`, `storage/fonts/`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860673
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877239
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019538735
+      }
+    ],
+    "9.2 Update `server/src/index.ts` — mount semua routes + middleware": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860735
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877329
+      }
+    ],
+    "10. Checkpoint — Verifikasi server API": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860810
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877463
+      }
+    ],
+    "11.1 Tambahkan dependencies client ke `client/package.json`": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860855
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877575
+      }
+    ],
+    "11.2 Buat `client/src/lib/api.ts` — fetch wrapper ke server": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860900
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877670
+      }
+    ],
+    "11.3 Buat `client/src/lib/auth.ts` — helper untuk menyimpan/membaca token": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860945
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877777
+      }
+    ],
+    "12.1 Buat `client/src/pages/LoginPage.tsx` — form login": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009860987
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877878
+      }
+    ],
+    "12.2 Buat `client/src/pages/DonaturPage.tsx` — tabel donatur + form tambah/edit": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009861033
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014877981
+      }
+    ],
+    "12.3 Buat `client/src/pages/TransaksiPage.tsx` — tabel transaksi + form catat": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009861116
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014878081
+      }
+    ],
+    "12.4 Buat `client/src/pages/SertifikatPage.tsx` — daftar sertifikat + generate": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009861164
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014878186
+      }
+    ],
+    "12.5 Buat `client/src/pages/TemplateEditorPage.tsx` — manajemen template (superadmin)": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009861211
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014878294
+      }
+    ],
+    "12.6 Buat `client/src/App.tsx` — router dan layout utama": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009861256
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014878389
+      }
+    ],
+    "13. Final checkpoint — Verifikasi end-to-end": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788009861303
+      },
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788014878512
+      }
+    ],
+    "1. Setup shared types dan konfigurasi monorepo": [
+      {
+        "executionId": "840cb8e0-e350-42e7-bcd8-e196d2179b42",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788011268405
+      }
+    ],
+    "2. Setup database schema dan koneksi Neon PostgreSQL": [
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788015670418
+      }
+    ],
+    "3. Implementasi library modules server": [
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016238774
+      }
+    ],
+    "5. Implementasi auth middleware dan role guard": [
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788016698647
+      }
+    ],
+    "7. Implementasi routes program, penandatangan, dan template": [
+      {
+        "executionId": "0afd0257-b8b8-4102-8387-8af4b62dd029",
+        "chatSessionId": "sess_128b6af7-ab38-433a-b34f-306691211105",
+        "timestamp": 1788019529789
+      }
+    ]
+  }
+}

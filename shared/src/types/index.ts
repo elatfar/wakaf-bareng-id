@@ -1,4 +1,13 @@
-export type ApiResponse = {
+export interface ApiResponse<T = unknown> {
+  success: boolean;
   message: string;
-  success: true;
+  data?: T;
 }
+
+export * from "./donatur";
+export * from "./program";
+export * from "./pengguna";
+export * from "./penandatangan";
+export * from "./transaksi";
+export * from "./sertifikat";
+export * from "./template";

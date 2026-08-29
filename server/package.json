@@ -18,10 +18,18 @@
     "dev": "bun --watch run src/index.ts & tsc --watch"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.10.8",
+    "jose": "^6.2.10",
+    "pdf-lib": "^1.17.1",
+    "postgres": "^3.4.9",
     "shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bcryptjs": "^3.0.0",
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.10"
   }
 }
