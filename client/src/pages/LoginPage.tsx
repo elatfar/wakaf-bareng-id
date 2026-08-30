@@ -28,16 +28,22 @@ export default function LoginPage() {
     mutation.isError
       ? 'Terjadi kesalahan. Silakan coba lagi.'
       : mutation.data && !mutation.data.success
-      ? mutation.data.message
-      : ''
+        ? mutation.data.message
+        : ''
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         {/* Brand header */}
         <div className="rounded-t-xl px-8 pt-8 pb-6 text-center bg-primary">
-          <div className="text-4xl mb-2">☪</div>
-          <h1 className="text-xl font-bold text-primary-foreground">Wakaf Bareng</h1>
+          <div className="flex justify-center mb-2">
+            <img
+              src="/logo-wakaf-bareng.svg"
+              alt="Logo Wakaf Bareng"
+              className="h-5 w-5 object-contain"
+            />
+          </div>
+          <h1 className="text-xl font-bold text-primary-foreground">Manajemen Wakaf Bareng</h1>
           <p className="text-sm mt-1 text-primary-foreground/70">Yayasan Adab Insan Mulia</p>
         </div>
 

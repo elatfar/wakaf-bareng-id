@@ -34,9 +34,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-6">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#D9A85C]/40 text-[#D9A85C]">
-            <span className="text-base leading-none" aria-hidden>
-              ☪
-            </span>
+            <img
+              src="/logo-wakaf-bareng.svg"
+              alt="Logo Wakaf Bareng"
+              className="h-5 w-5 object-contain"
+            />
           </div>
           <div>
             <div className="text-[15px] font-semibold tracking-tight text-[#F0DCC0]">
