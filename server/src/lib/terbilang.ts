@@ -30,16 +30,16 @@ function ratusan(n: number): string {
   if (ratus === 1) {
     parts.push("Seratus");
   } else if (ratus > 1) {
-    parts.push(SATUAN[ratus] + " Ratus");
+    parts.push(SATUAN[ratus]! + " Ratus");
   }
 
   if (sisa < 20) {
-    if (sisa > 0) parts.push(SATUAN[sisa]);
+    if (sisa > 0) parts.push(SATUAN[sisa]!);
   } else {
     const puluh = Math.floor(sisa / 10);
     const satuan = sisa % 10;
-    parts.push(PULUHAN[puluh]);
-    if (satuan > 0) parts.push(SATUAN[satuan]);
+    parts.push(PULUHAN[puluh]!);
+    if (satuan > 0) parts.push(SATUAN[satuan]!);
   }
 
   return parts.join(" ");

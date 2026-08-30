@@ -118,7 +118,7 @@ Implementasi aplikasi manajemen wakaf berbasis web untuk Yayasan Adab Insan Muli
     - Return HTTP 403 dengan pesan "Akses ditolak" jika role tidak sesuai
     - _Requirements: 3.1, 3.6_
 
-- [ ] 6. Implementasi routes auth, pengguna, dan donatur
+- [x] 6. Implementasi routes auth, pengguna, dan donatur
   - [x] 6.1 Buat `server/src/routes/auth.ts` — `POST /auth/login`
     - Validasi input `email` dan `password`
     - Query database untuk pengguna dengan email yang cocok
@@ -126,7 +126,7 @@ Implementasi aplikasi manajemen wakaf berbasis web untuk Yayasan Adab Insan Muli
     - Generate JWT token menggunakan `jose` dengan payload `{ id, email, role }`
     - Return HTTP 401 jika kredensial salah, 200 + `LoginResponse` jika berhasil
     - _Requirements: 3.2, 3.3_
-  - [-] 6.2 Buat `server/src/routes/pengguna.ts` — CRUD pengguna
+  - [x] 6.2 Buat `server/src/routes/pengguna.ts` — CRUD pengguna
     - `POST /pengguna` (superadmin only): hash password dengan bcrypt cost=10, insert ke DB, return 201
     - `GET /pengguna` (superadmin only): daftar semua pengguna (tanpa `passwordHash`)
     - _Requirements: 3.7, 3.8_
@@ -164,8 +164,8 @@ Implementasi aplikasi manajemen wakaf berbasis web untuk Yayasan Adab Insan Muli
     - **Property 11: Hanya satu template aktif pada satu waktu**
     - **Validates: Requirements 6.3, 6.4**
 
-- [ ] 8. Implementasi routes transaksi dan sertifikat
-  - [-] 8.1 Buat `server/src/routes/transaksi.ts` — CRUD transaksi
+- [x] 8. Implementasi routes transaksi dan sertifikat
+  - [x] 8.1 Buat `server/src/routes/transaksi.ts` — CRUD transaksi
     - `POST /transaksi`: validasi `donaturId` ada → 404, `programId` ada + aktif → 400, `jenis=barang` + `deskripsiBarang` kosong → 400; panggil `generateNomor("TRX")` dan `angkaKeTerbilang(jumlah)`; insert → 201
     - `GET /transaksi`: return daftar transaksi dengan JOIN donatur dan program
     - `PATCH /transaksi/:id/status`: update status (`pending`/`terverifikasi`/`batal`)
@@ -173,7 +173,7 @@ Implementasi aplikasi manajemen wakaf berbasis web untuk Yayasan Adab Insan Muli
   - [ ]* 8.2 Tulis integration test untuk validasi transaksi barang
     - **Property 10: Validasi deskripsi barang — whitespace ditolak**
     - **Validates: Requirements 4.7**
-  - [~] 8.3 Buat `server/src/routes/sertifikat.ts` — generate dan akses sertifikat
+  - [x] 8.3 Buat `server/src/routes/sertifikat.ts` — generate dan akses sertifikat
     - `POST /sertifikat/generate/:transaksiId` (admin/superadmin):
       1. Cek transaksi exist + status `terverifikasi` → 400 jika tidak
       2. Cek template aktif ada → 400 jika tidak
@@ -197,57 +197,57 @@ Implementasi aplikasi manajemen wakaf berbasis web untuk Yayasan Adab Insan Muli
     - **Property 5: Keunikan nomor sekuensial dalam satu bulan**
     - **Validates: Requirements 9.4, 4.10, 5.13**
 
-- [ ] 9. Wiring server: index.ts, CORS, static file serving, setup storage
-  - [-] 9.1 Buat direktori `storage/sertifikat/`, `storage/backgrounds/`, `storage/ttd/`, `storage/fonts/`
+- [x] 9. Wiring server: index.ts, CORS, static file serving, setup storage
+  - [x] 9.1 Buat direktori `storage/sertifikat/`, `storage/backgrounds/`, `storage/ttd/`, `storage/fonts/`
     - Tambahkan `storage/sertifikat/`, `storage/ttd/` ke `.gitignore` (file generated)
     - Tambahkan `storage/.gitkeep` agar direktori ditrack
     - _Requirements: 5.10_
-  - [~] 9.2 Update `server/src/index.ts` — mount semua routes + middleware
+  - [x] 9.2 Update `server/src/index.ts` — mount semua routes + middleware
     - Import dan mount: `auth`, `donatur`, `program`, `pengguna`, `penandatangan`, `transaksi`, `sertifikat`, `template`
     - Tambahkan `cors()` middleware dari `hono/cors`
     - Tambahkan static file serving untuk `storage/` agar PDF bisa diakses via URL
     - Terapkan `authMiddleware` ke semua route kecuali `POST /auth/login`
     - _Requirements: 3.4, 3.5, 8.3_
 
-- [~] 10. Checkpoint — Verifikasi server API
+- [x] 10. Checkpoint — Verifikasi server API
   - Pastikan semua routes terdaftar dan server bisa start, tanya user jika ada pertanyaan.
 
-- [ ] 11. Implementasi client — setup dan lib/api.ts
-  - [~] 11.1 Tambahkan dependencies client ke `client/package.json`
+- [x] 11. Implementasi client — setup dan lib/api.ts
+  - [x] 11.1 Tambahkan dependencies client ke `client/package.json`
     - Tambah `react-router-dom` (atau `@tanstack/react-router`) untuk navigasi
     - Verifikasi `@tanstack/react-query` sudah ada
     - _Requirements: 11.1, 11.2, 11.3, 11.4_
-  - [~] 11.2 Buat `client/src/lib/api.ts` — fetch wrapper ke server
+  - [x] 11.2 Buat `client/src/lib/api.ts` — fetch wrapper ke server
     - Baca `VITE_SERVER_URL` dari env, fallback ke `http://localhost:3000`
     - Export fungsi-fungsi typed untuk setiap endpoint: `fetchDonatur`, `createDonatur`, dll.
     - Sertakan token JWT di header `Authorization: Bearer <token>` dari localStorage
     - _Requirements: 11.9_
-  - [~] 11.3 Buat `client/src/lib/auth.ts` — helper untuk menyimpan/membaca token
+  - [x] 11.3 Buat `client/src/lib/auth.ts` — helper untuk menyimpan/membaca token
     - `setToken(token)`, `getToken()`, `clearToken()` menggunakan localStorage
     - `isLoggedIn()` helper
     - _Requirements: 3.4_
 
-- [ ] 12. Implementasi client pages
-  - [~] 12.1 Buat `client/src/pages/LoginPage.tsx` — form login
+- [x] 12. Implementasi client pages
+  - [x] 12.1 Buat `client/src/pages/LoginPage.tsx` — form login
     - Form dengan field `email` dan `password`
     - `useMutation` untuk `POST /auth/login`, simpan token ke localStorage
     - Redirect ke halaman utama setelah login berhasil
     - _Requirements: 3.2, 3.3_
-  - [~] 12.2 Buat `client/src/pages/DonaturPage.tsx` — tabel donatur + form tambah/edit
+  - [x] 12.2 Buat `client/src/pages/DonaturPage.tsx` — tabel donatur + form tambah/edit
     - `useQuery` untuk fetch daftar donatur
     - Tabel dengan kolom: nama, noHp, email, NIK, aksi
     - Form untuk tambah dan edit donatur (validasi nama wajib di client side)
     - `useMutation` untuk create/update/delete
     - Tampilkan loading state dan error message dari `ApiResponse`
     - _Requirements: 11.1, 1.3, 1.4, 1.7_
-  - [~] 12.3 Buat `client/src/pages/TransaksiPage.tsx` — tabel transaksi + form catat
+  - [x] 12.3 Buat `client/src/pages/TransaksiPage.tsx` — tabel transaksi + form catat
     - `useQuery` untuk fetch daftar transaksi (dengan info donatur dan program)
     - Form untuk mencatat transaksi baru: select donatur, select program, jenis, jumlah, metode bayar, catatan
     - Tampilkan field `deskripsiBarang` hanya ketika `jenis = "barang"`
     - `useMutation` untuk create + update status
     - Disable tombol saat `mutation.isPending`
     - _Requirements: 11.2, 4.1, 4.4, 4.8, 4.9_
-  - [~] 12.4 Buat `client/src/pages/SertifikatPage.tsx` — daftar sertifikat + generate
+  - [x] 12.4 Buat `client/src/pages/SertifikatPage.tsx` — daftar sertifikat + generate
     - `useQuery` untuk fetch daftar sertifikat
     - Tombol "Buat Sertifikat" pada transaksi yang belum punya sertifikat
     - `useMutation` untuk `POST /sertifikat/generate/:transaksiId`
@@ -256,19 +256,19 @@ Implementasi aplikasi manajemen wakaf berbasis web untuk Yayasan Adab Insan Muli
     - Tampilkan loading indicator dan nonaktifkan tombol saat pending
     - Tampilkan pesan error user-friendly (tanpa stack trace) jika gagal
     - _Requirements: 11.3, 11.5, 11.6, 11.7, 11.8, 8.6_
-  - [~] 12.5 Buat `client/src/pages/TemplateEditorPage.tsx` — manajemen template (superadmin)
+  - [x] 12.5 Buat `client/src/pages/TemplateEditorPage.tsx` — manajemen template (superadmin)
     - `useQuery` untuk fetch daftar template
     - Tampilkan template list dengan status aktif/nonaktif
     - Tombol "Aktifkan" untuk mengaktifkan template tertentu
     - Form untuk tambah template baru (nama, path background, layoutField JSON editor)
     - _Requirements: 11.4, 6.1, 6.2, 6.3, 6.4, 6.7_
-  - [~] 12.6 Buat `client/src/App.tsx` — router dan layout utama
+  - [x] 12.6 Buat `client/src/App.tsx` — router dan layout utama
     - Setup React Router dengan routes: `/login`, `/donatur`, `/transaksi`, `/sertifikat`, `/template`
     - Tambahkan protected route yang redirect ke `/login` jika belum login
     - Navigation sidebar atau topbar dengan link ke tiap halaman
     - _Requirements: 11.1, 11.2, 11.3, 11.4_
 
-- [~] 13. Final checkpoint — Verifikasi end-to-end
+- [x] 13. Final checkpoint — Verifikasi end-to-end
   - Pastikan semua unit tests dan integration tests lulus.
   - Verifikasi alur utama: login → catat transaksi → generate sertifikat → download PDF.
   - Tanya user jika ada pertanyaan atau adjustment yang diperlukan.

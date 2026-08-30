@@ -1,66 +1,38 @@
-import { useMutation } from "@tanstack/react-query";
-import { hcWithType } from "server/client";
-import beaver from "./assets/beaver.svg";
-import "./App.css";
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { isLoggedIn } from '@/lib/auth'
+import Layout from '@/components/Layout'
+import LoginPage from '@/pages/LoginPage'
+import DashboardPage from '@/pages/DashboardPage'
+import DonaturPage from '@/pages/DonaturPage'
+import TransaksiPage from '@/pages/TransaksiPage'
+import SertifikatPage from '@/pages/SertifikatPage'
+import TemplateEditorPage from '@/pages/TemplateEditorPage'
+import PengaturanPage from '@/pages/PengaturanPage'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-const client = hcWithType(SERVER_URL);
-
-type ResponseType = Awaited<ReturnType<typeof client.hello.$get>>;
-
-function App() {
-	const apiRequestMutation = useMutation({
-		mutationFn: async () => {
-			const res = await client.hello.$get();
-			if (!res.ok) {
-				throw new Error("Error fetching data");
-			}
-			const data = await res.json();
-			return data;
-		},
-		onError: (err: any) => console.log(err),
-	});
-
-	return (
-		<>
-			<div>
-				<a
-					href="https://github.com/stevedylandev/bhvr"
-					target="_blank"
-					rel="noopener"
-				>
-					<img src={beaver} className="logo" alt="beaver logo" />
-				</a>
-			</div>
-			<h1>bhvr</h1>
-			<h2>Bun + Hono + Vite + React</h2>
-			<p>A typesafe fullstack monorepo</p>
-			<div className="card">
-				<div className="button-container">
-					<button type="button" onClick={() => apiRequestMutation.mutate()}>
-						Call API
-					</button>
-					<a
-						className="docs-link"
-						target="_blank"
-						href="https://bhvr.dev"
-						rel="noopener"
-					>
-						Docs
-					</a>
-				</div>
-				{apiRequestMutation.isSuccess && (
-					<pre className="response">
-						<code>
-							Message: {apiRequestMutation.data.message} <br />
-							Success: {apiRequestMutation.data.success.toString()}
-						</code>
-					</pre>
-				)}
-			</div>
-		</>
-	);
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  if (!isLoggedIn()) return <Navigate to="/login" replace />
+  return <>{children}</>
 }
 
-export default App;
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
+      <Route path="/donatur" element={<ProtectedLayout><DonaturPage /></ProtectedLayout>} />
+      <Route path="/transaksi" element={<ProtectedLayout><TransaksiPage /></ProtectedLayout>} />
+      <Route path="/sertifikat" element={<ProtectedLayout><SertifikatPage /></ProtectedLayout>} />
+      <Route path="/template" element={<ProtectedLayout><TemplateEditorPage /></ProtectedLayout>} />
+      <Route path="/pengaturan" element={<ProtectedLayout><PengaturanPage /></ProtectedLayout>} />
+      <Route path="*" element={<Navigate to={isLoggedIn() ? '/dashboard' : '/login'} replace />} />
+    </Routes>
+  )
+}

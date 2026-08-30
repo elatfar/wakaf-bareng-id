@@ -4,6 +4,12 @@ import * as fs from "fs";
 import * as path from "path";
 import type { TemplateSertifikat, LayoutFieldItem } from "shared";
 
+// Resolve server root relative to this file's location:
+// src/lib/pdf.ts → ../../ → server/
+// Using import.meta.dir (Bun-native) for reliable path resolution
+// regardless of process.cwd()
+const SERVER_ROOT = path.resolve(import.meta.dir, "../..");
+
 export interface RenderData {
   noTransaksi: string;
   noSertifikat: string;
@@ -63,7 +69,7 @@ export async function renderSertifikatPDF(
   const page = pdfDoc.addPage([canvasWidth, canvasHeight]);
 
   // Embed background PNG
-  const bgPath = path.resolve(process.cwd(), template.fileBackground);
+  const bgPath = path.resolve(SERVER_ROOT, template.fileBackground);
   const bgBytes = fs.readFileSync(bgPath);
   const bgImage = await pdfDoc.embedPng(bgBytes);
   page.drawImage(bgImage, {
@@ -120,10 +126,10 @@ export async function renderSertifikatPDF(
   const pdfBytes = await pdfDoc.save();
 
   // Ensure output directory exists
-  const outDir = path.resolve(process.cwd(), "storage", "sertifikat");
+  const outDir = path.resolve(SERVER_ROOT, "storage", "sertifikat");
   fs.mkdirSync(outDir, { recursive: true });
 
-  const filePath = path.join(outDir, `${data.noTransaksi}.pdf`);
+  const filePath = path.join(outDir, `${data.noTransaksi.replace(/\//g, "-")}.pdf`);
   fs.writeFileSync(filePath, pdfBytes);
 
   return filePath;
