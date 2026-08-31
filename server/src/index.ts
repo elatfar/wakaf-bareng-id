@@ -10,17 +10,30 @@ import transaksiRoutes from "./routes/transaksi";
 import sertifikatRoutes from "./routes/sertifikat";
 import templateRoutes from "./routes/template";
 import { authMiddleware } from "./middleware/auth";
-import { db } from "./db/client";
+import { getDb } from "./db/client";
 import { sertifikat } from "./db/schema";
 
+// Cloudflare Workers environment bindings
+export type Env = {
+  DATABASE_URL: string;
+  JWT_SECRET: string;
+};
+
 // Main app
-export const app = new Hono();
+export const app = new Hono<{ Bindings: Env }>();
 
 // CORS - configured for single-origin deployment
 app.use("*", cors({
   origin: "*", // Allow all origins for development, can be restricted in production
   credentials: true,
 }));
+
+// Initialize DB using Cloudflare secret on first request.
+// getDb() is a lazy singleton — subsequent calls return the cached instance.
+app.use("*", async (c, next) => {
+  getDb(c.env?.DATABASE_URL);
+  await next();
+});
 
 // Health check
 app.get("/", (c) => c.json({ success: true, message: "Wakaf Bareng API" }));
@@ -34,6 +47,7 @@ app.get("/sertifikat/:id/download", async (c) => {
     return c.json({ success: false, message: "ID tidak valid" }, 400);
   }
 
+  const db = getDb(c.env?.DATABASE_URL);
   const row = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
   });

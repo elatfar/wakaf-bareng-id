@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import * as fs from "fs";
-import { db } from "../db/client";
+import { getDb } from "../db/client";
 import { sertifikat, transaksi, templateSertifikat } from "../db/schema";
 import { requireRole } from "../middleware/role";
 import { generateNomor } from "../lib/nomor";
@@ -15,6 +15,7 @@ const app = new Hono();
 
 // GET /sertifikat — daftar sertifikat dengan transaksi+donatur+program, urut tanggalTerbit desc
 app.get("/", async (c) => {
+  const db = getDb();
   const rows = await db.query.sertifikat.findMany({
     with: {
       transaksi: {
@@ -49,6 +50,7 @@ app.get("/:id", async (c) => {
     return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
   }
 
+  const db = getDb();
   const row = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
     with: {
@@ -87,6 +89,7 @@ app.get("/:id/download", async (c) => {
     return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
   }
 
+  const db = getDb();
   const row = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
   });
@@ -118,6 +121,7 @@ app.post("/generate/:transaksiId", requireRole(["admin", "superadmin"]), async (
       return c.json<ApiResponse>({ success: false, message: "ID transaksi tidak valid" }, 400);
     }
 
+    const db = getDb();
     // 1. Cek transaksi exist + status terverifikasi
     const trx = await db.query.transaksi.findFirst({
       where: eq(transaksi.id, transaksiId),
@@ -225,6 +229,7 @@ app.patch("/:id/status", async (c) => {
     return c.json<ApiResponse>({ success: false, message: "dikirimVia harus 'whatsapp' atau 'email'" }, 400);
   }
 
+  const db = getDb();
   const existingRow = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
   });

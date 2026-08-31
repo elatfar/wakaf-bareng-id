@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
-import { db } from "../db/client";
+import { getDb } from "../db/client";
 import { transaksi, donatur, program } from "../db/schema";
 import { generateNomor } from "../lib/nomor";
 import { angkaKeTerbilang } from "../lib/terbilang";
@@ -13,6 +13,7 @@ const app = new Hono();
 
 // GET /transaksi — daftar dengan donatur dan program
 app.get("/", async (c) => {
+  const db = getDb();
   const rows = await db.query.transaksi.findMany({
     with: {
       donatur: { columns: { id: true, nama: true, noHp: true } },
@@ -33,6 +34,7 @@ app.get("/", async (c) => {
 // GET /transaksi/:id
 app.get("/:id", async (c) => {
   const id = Number(c.req.param("id"));
+  const db = getDb();
   const row = await db.query.transaksi.findFirst({
     where: eq(transaksi.id, id),
     with: {
@@ -55,6 +57,7 @@ app.get("/:id", async (c) => {
 app.post("/", async (c) => {
   const body = await c.req.json<BuatTransaksiInput>();
 
+  const db = getDb();
   // Req 4.5: donaturId tidak ada → 404
   const donaturRow = await db.query.donatur.findFirst({
     where: eq(donatur.id, body.donaturId),
@@ -138,6 +141,7 @@ app.patch("/:id/status", async (c) => {
     );
   }
 
+  const db = getDb();
   const existing = await db.query.transaksi.findFirst({
     where: eq(transaksi.id, id),
   });

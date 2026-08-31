@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
-import { db } from "../db/client";
+import { getDb } from "../db/client";
 import { templateSertifikat } from "../db/schema";
 import { requireRole } from "../middleware/role";
 import type {
@@ -36,6 +36,7 @@ const app = new Hono();
 
 // GET /template — return all templates with penandatangan data (JOIN via Drizzle relations)
 app.get("/", async (c) => {
+  const db = getDb();
   const templates = await db.query.templateSertifikat.findMany({
     with: {
       penandatangan1: true,
@@ -62,6 +63,7 @@ app.get("/:id", async (c) => {
     return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
   }
 
+  const db = getDb();
   const row = await db.query.templateSertifikat.findFirst({
     where: eq(templateSertifikat.id, id),
     with: { penandatangan1: true, penandatangan2: true },
@@ -98,6 +100,7 @@ app.post("/", requireRole(["superadmin"]), async (c) => {
     }, 400);
   }
 
+  const db = getDb();
   const [row] = await db
     .insert(templateSertifikat)
     .values({
@@ -124,6 +127,7 @@ app.patch("/:id/aktif", requireRole(["superadmin"]), async (c) => {
     return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
   }
 
+  const db = getDb();
   const existing = await db.query.templateSertifikat.findFirst({
     where: eq(templateSertifikat.id, id),
   });

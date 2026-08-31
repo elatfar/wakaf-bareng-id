@@ -2,24 +2,29 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-// Database client configuration
-// This setup supports both local development (PostgreSQL) and Cloudflare Workers (with modifications)
+// Database client — lazy singleton.
+// The connection is established only on the first call to getDb(),
+// which happens inside a request handler (not at module load time).
+// This is required for Cloudflare Workers where secrets (DATABASE_URL)
+// are only available at request time, not during module initialization.
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL environment variable is not set");
+type DrizzleInstance = ReturnType<typeof drizzle<typeof schema>>;
+export type DrizzleDb = DrizzleInstance;
+
+let _db: DrizzleInstance | null = null;
+
+/**
+ * Returns the shared Drizzle DB instance, creating it on first call.
+ * @param connectionString - Optional DATABASE_URL override (from c.env in CF Workers).
+ *   If omitted, falls back to process.env.DATABASE_URL (local dev).
+ */
+export function getDb(connectionString?: string): DrizzleInstance {
+  if (_db) return _db;
+  const url = connectionString ?? process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+  const sql = postgres(url, { max: 5 });
+  _db = drizzle(sql, { schema });
+  return _db;
 }
-
-// For local development with PostgreSQL
-const sql = postgres(connectionString, { max: 10 });
-export const db = drizzle(sql, { schema });
-export type DrizzleDb = typeof db;
-
-// For Cloudflare Workers, you would need to:
-// 1. Replace this with D1 or other Cloudflare-compatible database
-// 2. Update wrangler.jsonc with database bindings
-// 3. Modify this file to use the Cloudflare environment bindings
-// 
-// Example for Cloudflare D1:
-// import { drizzle } from "drizzle-orm/d1";
-// export const db = drizzle(c.env.DB, { schema });

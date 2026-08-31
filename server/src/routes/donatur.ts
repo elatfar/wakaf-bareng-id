@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { eq, count } from "drizzle-orm";
-import { db } from "../db/client";
+import { getDb } from "../db/client";
 import { donatur, transaksi } from "../db/schema";
 import type { ApiResponse, Donatur } from "shared";
 
@@ -8,6 +8,7 @@ const app = new Hono();
 
 // GET /donatur
 app.get("/", async (c) => {
+  const db = getDb();
   const rows = await db.select().from(donatur).orderBy(donatur.id);
   const data: Donatur[] = rows.map((r) => ({
     ...r,
@@ -19,6 +20,7 @@ app.get("/", async (c) => {
 // GET /donatur/:id
 app.get("/:id", async (c) => {
   const id = Number(c.req.param("id"));
+  const db = getDb();
   const row = await db.query.donatur.findFirst({ where: eq(donatur.id, id) });
   if (!row) {
     return c.json<ApiResponse>({ success: false, message: "Donatur tidak ditemukan" }, 404);
@@ -34,6 +36,8 @@ app.post("/", async (c) => {
   if (!body.nama || body.nama.trim() === "") {
     return c.json<ApiResponse>({ success: false, message: "Nama donatur wajib diisi" }, 400);
   }
+
+  const db = getDb();
 
   const [row] = await db
     .insert(donatur)
@@ -55,6 +59,7 @@ app.put("/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const body = await c.req.json<Partial<Donatur>>();
 
+  const db = getDb();
   const existing = await db.query.donatur.findFirst({ where: eq(donatur.id, id) });
   if (!existing) {
     return c.json<ApiResponse>({ success: false, message: "Donatur tidak ditemukan" }, 404);
@@ -84,6 +89,7 @@ app.put("/:id", async (c) => {
 app.delete("/:id", async (c) => {
   const id = Number(c.req.param("id"));
 
+  const db = getDb();
   const existing = await db.query.donatur.findFirst({ where: eq(donatur.id, id) });
   if (!existing) {
     return c.json<ApiResponse>({ success: false, message: "Donatur tidak ditemukan" }, 404);

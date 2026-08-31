@@ -12,7 +12,7 @@ import transaksiRoutes from "./routes/transaksi";
 import sertifikatRoutes from "./routes/sertifikat";
 import templateRoutes from "./routes/template";
 import { authMiddleware } from "./middleware/auth";
-import { db } from "./db/client";
+import { getDb } from "./db/client";
 import { sertifikat } from "./db/schema";
 
 // Main app for Bun development
@@ -37,6 +37,7 @@ app.get("/sertifikat/:id/download", async (c) => {
     return c.json({ success: false, message: "ID tidak valid" }, 400);
   }
 
+  const db = getDb();
   const row = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
   });

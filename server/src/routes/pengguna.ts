@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { hash } from "bcryptjs";
-import { db } from "../db/client";
+import { getDb } from "../db/client";
 import { pengguna } from "../db/schema";
 import { requireRole } from "../middleware/role";
 import type { ApiResponse, Pengguna, BuatPenggunaInput } from "shared";
@@ -10,6 +10,7 @@ const app = new Hono();
 
 // GET /pengguna (superadmin only) — exclude passwordHash
 app.get("/", requireRole(["superadmin"]), async (c) => {
+  const db = getDb();
   const rows = await db
     .select({
       id: pengguna.id,
@@ -38,6 +39,7 @@ app.post("/", requireRole(["superadmin"]), async (c) => {
     return c.json<ApiResponse>({ success: false, message: "Role tidak valid" }, 400);
   }
 
+  const db = getDb();
   // Check duplicate email
   const existing = await db.query.pengguna.findFirst({
     where: eq(pengguna.email, body.email.trim()),

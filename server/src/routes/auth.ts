@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db } from "../db/client";
+import { getDb } from "../db/client";
 import { pengguna } from "../db/schema";
 import { signToken } from "../middleware/auth";
 import type { ApiResponse, LoginResponse } from "shared";
@@ -18,6 +18,7 @@ app.post("/login", async (c) => {
     }, 400);
   }
 
+  const db = getDb();
   const user = await db.query.pengguna.findFirst({
     where: eq(pengguna.email, body.email),
   });
@@ -37,7 +38,10 @@ app.post("/login", async (c) => {
     }, 401);
   }
 
-  const token = await signToken({ id: user.id, email: user.email, role: user.role });
+  const token = await signToken(
+    { id: user.id, email: user.email, role: user.role },
+    (c.env as Record<string, string>)?.JWT_SECRET
+  );
 
   return c.json<ApiResponse<LoginResponse>>({
     success: true,

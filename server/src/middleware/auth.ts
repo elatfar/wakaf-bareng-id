@@ -14,12 +14,13 @@ declare module "hono" {
   }
 }
 
-// JWT Secret configuration
-// For local development: uses process.env.JWT_SECRET
-// For Cloudflare Workers: would use c.env.JWT_SECRET binding
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "wakaf-bareng-jwt-secret-2026"
-);
+const FALLBACK_JWT_SECRET = "wakaf-bareng-jwt-secret-2026";
+
+function getJwtSecret(envSecret?: string): Uint8Array {
+  return new TextEncoder().encode(
+    envSecret ?? process.env.JWT_SECRET ?? FALLBACK_JWT_SECRET
+  );
+}
 
 export const authMiddleware = createMiddleware(async (c, next) => {
   const authHeader = c.req.header("Authorization");
@@ -28,8 +29,10 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   }
 
   const token = authHeader.slice(7);
+  // Read JWT_SECRET from Cloudflare env bindings (c.env) at request time
+  const jwtSecret = getJwtSecret((c.env as Record<string, string>)?.JWT_SECRET);
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, jwtSecret);
     c.set("pengguna", payload as unknown as JwtPayload);
     await next();
   } catch {
@@ -37,10 +40,11 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   }
 });
 
-export async function signToken(payload: JwtPayload): Promise<string> {
+export async function signToken(payload: JwtPayload, envSecret?: string): Promise<string> {
   const { SignJWT } = await import("jose");
+  const jwtSecret = getJwtSecret(envSecret);
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("8h")
-    .sign(JWT_SECRET);
+    .sign(jwtSecret);
 }
