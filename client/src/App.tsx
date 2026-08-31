@@ -9,6 +9,7 @@ import TransaksiPage from '@/pages/TransaksiPage'
 import SertifikatPage from '@/pages/SertifikatPage'
 import TemplateEditorPage from '@/pages/TemplateEditorPage'
 import PengaturanPage from '@/pages/PengaturanPage'
+import StatisticsPage from '@/pages/StatisticsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isLoggedIn()) return <Navigate to="/login" replace />
@@ -34,6 +35,7 @@ export default function App() {
       <Route path="/sertifikat" element={<ProtectedLayout><SertifikatPage /></ProtectedLayout>} />
       <Route path="/template" element={<ProtectedLayout><TemplateEditorPage /></ProtectedLayout>} />
       <Route path="/pengaturan" element={<ProtectedLayout><PengaturanPage /></ProtectedLayout>} />
+      <Route path="/statistik" element={<ProtectedLayout><StatisticsPage /></ProtectedLayout>} />
       <Route path="*" element={<Navigate to={isLoggedIn() ? '/dashboard' : '/login'} replace />} />
     </Routes>
   )

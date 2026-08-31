@@ -8,6 +8,7 @@ import {
   FileCodeCorner,
   Settings,
   LogOut,
+  BarChart3,
 } from 'lucide-react'
 import { clearToken, getUser } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { path: '/program', label: 'Program', icon: FolderOpen },
   { path: '/sertifikat', label: 'Sertifikat', icon: ScrollText },
   { path: '/template', label: 'Template Sertifikat', icon: FileCodeCorner },
+  { path: '/statistik', label: 'Statistik', icon: BarChart3 },
   { path: '/pengaturan', label: 'Pengaturan', icon: Settings },
 ]
 

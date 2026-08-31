@@ -7,6 +7,7 @@ import {
   numeric,
   integer,
   timestamp,
+  date,
   jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
@@ -44,7 +45,13 @@ export const program = pgTable("program", {
   id: serial("id").primaryKey(),
   namaProgram: text("nama_program").notNull(),
   deskripsi: text("deskripsi"),
+  targetDana: numeric("target_dana", { precision: 15, scale: 2 }),
   aktif: boolean("aktif").notNull().default(true),
+  tanggalMulai: date("tanggal_mulai"),
+  tanggalSelesai: date("tanggal_selesai"),
+  kategori: text("kategori"),
+  prioritas: integer("prioritas").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const pengguna = pgTable("pengguna", {

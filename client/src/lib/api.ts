@@ -1,7 +1,7 @@
 import type {
   ApiResponse,
   Donatur, BuatDonaturInput,
-  Program, BuatProgramInput,
+  Program, BuatProgramInput, ProgramStats,
   Pengguna, BuatPenggunaInput, LoginInput, LoginResponse,
   Penandatangan, BuatPenandatanganInput,
   TransaksiDetail, BuatTransaksiInput,
@@ -53,8 +53,17 @@ export const donaturApi = {
 
 // ─── Program ─────────────────────────────────────────────────────────────────
 export const programApi = {
-  list: (aktif?: boolean) =>
-    request<Program[]>(`/program${aktif ? "?aktif=true" : ""}`),
+  list: (params?: { aktif?: boolean; kategori?: string; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.aktif !== undefined) queryParams.append("aktif", params.aktif.toString());
+    if (params?.kategori) queryParams.append("kategori", params.kategori);
+    if (params?.search) queryParams.append("search", params.search);
+    const queryString = queryParams.toString();
+    return request<Program[]>(`/program${queryString ? `?${queryString}` : ""}`);
+  },
+  get: (id: number) => request<Program>(`/program/${id}`),
+  getStats: (id: number) => request<ProgramStats>(`/program/${id}/statistik`),
+  getSummary: () => request<any>("/program/statistik/summary"),
   create: (body: BuatProgramInput) =>
     request<Program>("/program", { method: "POST", body: JSON.stringify(body) }),
   update: (id: number, body: Partial<BuatProgramInput>) =>

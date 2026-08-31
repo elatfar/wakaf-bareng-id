@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, FileImage, CheckCircle2, Link, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  Plus, FileImage, CheckCircle2, Link, Eye, EyeOff, ChevronDown, ChevronUp,
+  AlignLeft, AlignCenter, AlignRight, Bold, Move,
+} from 'lucide-react'
 import { templateApi } from '@/lib/api'
 import type { BuatTemplateInput, LayoutField } from 'shared'
 import { Button } from '@/components/ui/button'
@@ -18,11 +21,11 @@ const GOLD = '#B8863F'
 const GOLD_SOFT = '#F3E7DC'
 
 const DEFAULT_LAYOUT: LayoutField = {
-  namaDonatur:    { x: 1000, y: 720,  size: 58, align: 'center', bold: true  },
-  deskripsiWakaf: { x: 1000, y: 900,  size: 36, align: 'center', bold: false },
-  jumlahTerbilang:{ x: 1000, y: 955,  size: 34, align: 'center', bold: true  },
-  noSertifikat:   { x: 1820, y: 1345, size: 22, align: 'right',  bold: false },
-  tanggalTerbit:  { x: 1820, y: 1375, size: 22, align: 'right',  bold: false },
+  namaDonatur: { x: 1000, y: 720, size: 58, align: 'center', bold: true },
+  deskripsiWakaf: { x: 1000, y: 900, size: 36, align: 'center', bold: false },
+  jumlahTerbilang: { x: 1000, y: 955, size: 34, align: 'center', bold: true },
+  noSertifikat: { x: 1820, y: 1345, size: 22, align: 'right', bold: false },
+  tanggalTerbit: { x: 1820, y: 1375, size: 22, align: 'right', bold: false },
   canvasWidth: 2000,
   canvasHeight: 1414,
 }
@@ -38,21 +41,234 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   tanggalTerbit: 'Tanggal Terbit',
 }
 
+// Contoh teks yang ditampilkan di canvas supaya posisi & ukuran terasa nyata,
+// bukan sekadar kotak kosong.
+const FIELD_SAMPLE: Record<FieldKey, string> = {
+  namaDonatur: 'Budi Santoso',
+  deskripsiWakaf: 'Telah mewakafkan tanah seluas 100 m²',
+  jumlahTerbilang: 'Seratus Juta Rupiah',
+  noSertifikat: 'No. 001/WKF/2026',
+  tanggalTerbit: '1 September 2026',
+}
+
 const FIELD_KEYS: FieldKey[] = [
   'namaDonatur', 'deskripsiWakaf', 'jumlahTerbilang', 'noSertifikat', 'tanggalTerbit'
 ]
 
-function FieldEditor({
+/** Canvas visual: background sertifikat + label tiap field yang bisa diseret (drag) langsung untuk mengatur posisi x/y. */
+function PositionCanvas({
+  backgroundUrl, canvasWidth, canvasHeight, layout, selected, onSelect, onChangePosition,
+}: {
+  backgroundUrl: string
+  canvasWidth: number
+  canvasHeight: number
+  layout: LayoutField
+  selected: FieldKey
+  onSelect: (key: FieldKey) => void
+  onChangePosition: (key: FieldKey, x: number, y: number) => void
+}) {
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [imgError, setImgError] = useState(false)
+  const [draggingKey, setDraggingKey] = useState<FieldKey | null>(null)
+
+  useEffect(() => { setImgError(false) }, [backgroundUrl])
+
+  function posFromPointer(e: React.PointerEvent) {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect || rect.width === 0 || rect.height === 0) return null
+    const relX = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const relY = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    return { x: Math.round(relX * canvasWidth), y: Math.round(relY * canvasHeight) }
+  }
+
+  function handleDown(e: React.PointerEvent<HTMLDivElement>, key: FieldKey) {
+    e.preventDefault()
+    e.stopPropagation()
+    onSelect(key)
+    setDraggingKey(key)
+      ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  function handleMove(e: React.PointerEvent<HTMLDivElement>, key: FieldKey) {
+    if (draggingKey !== key) return
+    const pos = posFromPointer(e)
+    if (pos) onChangePosition(key, pos.x, pos.y)
+  }
+  function handleUp(e: React.PointerEvent<HTMLDivElement>) {
+    setDraggingKey(null)
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch { /* noop */ }
+  }
+
+  const showPlaceholder = !backgroundUrl || imgError
+
+  return (
+    <div
+      ref={canvasRef}
+      className="relative w-full rounded-lg overflow-hidden border-2 select-none"
+      style={{
+        aspectRatio: `${canvasWidth} / ${canvasHeight}`,
+        borderColor: GOLD,
+        // container query units (cqw) dipakai supaya ukuran font teks di canvas
+        // ikut menyesuaikan lebar canvas tanpa perlu hitung ulang lewat JS.
+        containerType: 'inline-size',
+        backgroundColor: '#EDE4D8',
+        backgroundImage: showPlaceholder
+          ? 'repeating-linear-gradient(45deg, rgba(43,15,23,0.06) 0 10px, transparent 10px 20px)'
+          : undefined,
+        touchAction: 'none',
+      } as React.CSSProperties}
+    >
+      {backgroundUrl && !imgError && (
+        <img
+          src={backgroundUrl}
+          alt="Background template"
+          className="absolute inset-0 h-full w-full object-fill pointer-events-none"
+          onError={() => setImgError(true)}
+        />
+      )}
+
+      {!backgroundUrl && (
+        <div className="absolute inset-0 flex items-center justify-center text-center px-8">
+          <p className="text-xs text-muted-foreground">
+            Isi URL background untuk melihat pratinjau. Posisi teks tetap bisa diatur di sini.
+          </p>
+        </div>
+      )}
+
+      {FIELD_KEYS.map((key) => {
+        const field = layout[key] as LayoutField[FieldKey]
+        const isSelected = key === selected
+        const translate =
+          field.align === 'left' ? '0%, -50%' :
+            field.align === 'right' ? '-100%, -50%' : '-50%, -50%'
+        return (
+          <div
+            key={key}
+            onPointerDown={(e) => handleDown(e, key)}
+            onPointerMove={(e) => handleMove(e, key)}
+            onPointerUp={handleUp}
+            className="absolute cursor-move whitespace-nowrap rounded px-1.5 py-0.5"
+            style={{
+              left: `${(field.x / canvasWidth) * 100}%`,
+              top: `${(field.y / canvasHeight) * 100}%`,
+              transform: `translate(${translate})`,
+              fontSize: `clamp(9px, ${(field.size / canvasWidth) * 100}cqw, 400px)`,
+              fontWeight: field.bold ? 700 : 400,
+              textAlign: field.align,
+              color: MAROON,
+              backgroundColor: isSelected ? 'rgba(184,134,63,0.35)' : 'rgba(255,255,255,0.55)',
+              boxShadow: isSelected ? `0 0 0 2px ${GOLD}` : '0 0 0 1px rgba(43,15,23,0.12)',
+              zIndex: isSelected ? 10 : 1,
+            }}
+          >
+            {FIELD_SAMPLE[key]}
+          </div>
+        )
+      })}
+
+      {/* Petunjuk kecil */}
+      <div
+        className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] text-white/90 pointer-events-none"
+        style={{ backgroundColor: 'rgba(43,15,23,0.55)' }}
+      >
+        <Move className="h-2.5 w-2.5" />
+        Seret label untuk mengatur posisi
+      </div>
+    </div>
+  )
+}
+
+/** Panel kontrol untuk field yang sedang dipilih: ukuran, alignment, ketebalan, dan x/y presisi. */
+function FieldControlPanel({
   label, field, onChange,
 }: {
   label: string
   field: LayoutField[FieldKey]
   onChange: (updated: LayoutField[FieldKey]) => void
 }) {
+  const alignOptions: { value: AlignValue; Icon: typeof AlignLeft }[] = [
+    { value: 'left', Icon: AlignLeft },
+    { value: 'center', Icon: AlignCenter },
+    { value: 'right', Icon: AlignRight },
+  ]
+
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="grid grid-cols-5 gap-2">
+    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-[10px] text-muted-foreground tabular-nums">x: {field.x} · y: {field.y}</p>
+      </div>
+
+      <div className="space-y-3">
+        {/* Baris 1: Ukuran Teks (Mengambil 1 baris penuh agar slider tidak sesak) */}
+        <div className="space-y-1">
+          <Label className="text-[10px]">Ukuran Teks</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={10}
+              max={120}
+              value={field.size}
+              onChange={(e) => onChange({ ...field, size: Number(e.target.value) })}
+              className="min-w-0 flex-1 accent-[#B8863F]"
+            />
+            <Input
+              type="number"
+              value={field.size}
+              onChange={(e) => onChange({ ...field, size: Number(e.target.value) })}
+              className="h-7 w-14 text-xs shrink-0"
+            />
+          </div>
+        </div>
+
+        {/* Baris 2: Alignment & Ketebalan berdampingan */}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          {/* Alignment */}
+          <div className="space-y-1">
+            <Label className="text-[10px]">Alignment</Label>
+            <div className="flex h-7 items-center gap-1">
+              {alignOptions.map(({ value, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onChange({ ...field, align: value })}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors"
+                  style={
+                    field.align === value
+                      ? { backgroundColor: MAROON, borderColor: MAROON, color: '#fff' }
+                      : { borderColor: 'var(--border)', color: MAROON }
+                  }
+                  aria-pressed={field.align === value}
+                  aria-label={`Align ${value}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bold Toggle */}
+          <div className="space-y-1">
+            <Label className="text-[10px]">Ketebalan</Label>
+            <button
+              type="button"
+              onClick={() => onChange({ ...field, bold: !field.bold })}
+              className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors"
+              style={
+                field.bold
+                  ? { backgroundColor: MAROON, borderColor: MAROON, color: '#fff' }
+                  : { borderColor: 'var(--border)', color: MAROON }
+              }
+              aria-pressed={field.bold}
+            >
+              <Bold className="h-3.5 w-3.5" />
+              {field.bold ? 'Tebal' : 'Normal'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* X/Y presisi tetap tersedia untuk yang butuh angka pasti, tersinkron dengan drag di canvas */}
+      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
         <div className="space-y-1">
           <Label className="text-[10px]">X (px)</Label>
           <Input
@@ -71,38 +287,6 @@ function FieldEditor({
             className="h-7 text-xs"
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px]">Ukuran</Label>
-          <Input
-            type="number"
-            value={field.size}
-            onChange={(e) => onChange({ ...field, size: Number(e.target.value) })}
-            className="h-7 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[10px]">Align</Label>
-          <select
-            value={field.align}
-            onChange={(e) => onChange({ ...field, align: e.target.value as AlignValue })}
-            className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
-          >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[10px]">Tebal?</Label>
-          <div className="flex h-7 items-center">
-            <input
-              type="checkbox"
-              checked={field.bold}
-              onChange={(e) => onChange({ ...field, bold: e.target.checked })}
-              className="h-4 w-4 accent-[#2B0F17]"
-            />
-          </div>
-        </div>
       </div>
     </div>
   )
@@ -112,8 +296,9 @@ export default function TemplateEditorPage() {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [previewBg, setPreviewBg] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(true)
   const [bgError, setBgError] = useState(false)
+  const [selectedField, setSelectedField] = useState<FieldKey>('namaDonatur')
 
   const [form, setForm] = useState<BuatTemplateInput>({
     namaTemplate: '',
@@ -149,7 +334,8 @@ export default function TemplateEditorPage() {
     setFormError('')
     setPreviewBg(false)
     setBgError(false)
-    setShowAdvanced(false)
+    setShowAdvanced(true)
+    setSelectedField('namaDonatur')
     setForm({ namaTemplate: '', fileBackground: '', layoutField: DEFAULT_LAYOUT })
   }
 
@@ -307,7 +493,7 @@ export default function TemplateEditorPage() {
 
       {/* Dialog Tambah */}
       <Dialog open={open} onOpenChange={(o) => { if (!o) closeDialog() }}>
-        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-[95vw] lg:max-w-7xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tambah Template Sertifikat</DialogTitle>
           </DialogHeader>
@@ -412,14 +598,14 @@ export default function TemplateEditorPage() {
               </div>
             </div>
 
-            {/* Layout Fields (collapsible) */}
+            {/* Layout Fields — canvas interaktif drag & drop */}
             <div className="rounded-xl border border-border overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowAdvanced((v) => !v)}
                 className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
               >
-                <span>Posisi Teks (Layout Field)</span>
+                <span>Atur Posisi Teks</span>
                 {showAdvanced
                   ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   : <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -429,16 +615,48 @@ export default function TemplateEditorPage() {
               {showAdvanced && (
                 <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
                   <p className="text-xs text-muted-foreground">
-                    Atur posisi (X/Y dari kiri atas), ukuran font, alignment, dan ketebalan tiap teks.
+                    Seret label langsung di canvas untuk mengatur posisi, atau klik salah satu label
+                    untuk mengubah ukuran, alignment, dan ketebalannya.
                   </p>
-                  {FIELD_KEYS.map((key) => (
-                    <FieldEditor
-                      key={key}
-                      label={FIELD_LABELS[key]}
-                      field={form.layoutField[key] as LayoutField[FieldKey]}
-                      onChange={(val) => updateField(key, val)}
+
+                  {/* Chip pemilih field — berguna kalau posisi label saling menumpuk di canvas */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {FIELD_KEYS.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedField(key)}
+                        className="rounded-full border px-2.5 py-1 text-xs transition-colors"
+                        style={
+                          selectedField === key
+                            ? { backgroundColor: MAROON, borderColor: MAROON, color: '#fff' }
+                            : { borderColor: 'var(--border)', color: MAROON }
+                        }
+                      >
+                        {FIELD_LABELS[key]}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-4 items-start">
+                    <PositionCanvas
+                      backgroundUrl={form.fileBackground}
+                      canvasWidth={form.layoutField.canvasWidth}
+                      canvasHeight={form.layoutField.canvasHeight}
+                      layout={form.layoutField}
+                      selected={selectedField}
+                      onSelect={setSelectedField}
+                      onChangePosition={(key, x, y) =>
+                        updateField(key, { ...(form.layoutField[key] as LayoutField[FieldKey]), x, y })
+                      }
                     />
-                  ))}
+
+                    <FieldControlPanel
+                      label={FIELD_LABELS[selectedField]}
+                      field={form.layoutField[selectedField] as LayoutField[FieldKey]}
+                      onChange={(val) => updateField(selectedField, val)}
+                    />
+                  </div>
                 </div>
               )}
             </div>

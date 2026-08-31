@@ -238,7 +238,7 @@ export default function TransaksiPage() {
 
   const { data: trxRes, isLoading } = useQuery({ queryKey: ['transaksi'], queryFn: transaksiApi.list })
   const { data: donaturRes } = useQuery({ queryKey: ['donatur'], queryFn: donaturApi.list })
-  const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list(true) })
+  const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list({ aktif: true }) })
 
   const trxList = (trxRes?.data ?? []).filter((t) =>
     t.noTransaksi.toLowerCase().includes(search.toLowerCase()) ||
