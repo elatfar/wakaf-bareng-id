@@ -118,6 +118,20 @@ export default function DashboardPage() {
   const recentTrx = trxRes?.data?.slice(0, 5) ?? []
   const programs = programRes?.data?.filter((p) => p.aktif) ?? []
 
+  type ProgramStat = { terkumpul: number; trxCount: number; donaturIds: Set<string> }
+
+  const statsPerProgram = (trxRes?.data ?? []).reduce<Record<string, ProgramStat>>((acc, t) => {
+    if (t.status !== 'terverifikasi') return acc
+    const programId = t.program?.id ?? t.programId
+    if (programId === undefined || programId === null) return acc
+    const key = String(programId)
+    if (!acc[key]) acc[key] = { terkumpul: 0, trxCount: 0, donaturIds: new Set() }
+    acc[key].terkumpul += Number(t.jumlah)
+    acc[key].trxCount += 1
+    if (t.donatur?.id !== undefined && t.donatur?.id !== null) acc[key].donaturIds.add(String(t.donatur.id))
+    return acc
+  }, {})
+
   return (
     <div className="space-y-6">
       <div>
@@ -155,20 +169,67 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Program Aktif */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Program Aktif</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Program Aktif</p>
+            {programs.length > 0 && (
+              <span className="text-xs text-muted-foreground">{programs.length} program</span>
+            )}
+          </div>
           {programs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Belum ada program aktif</p>
-          ) : programs.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="pt-4 pb-4">
-                <p className="font-semibold text-sm" style={{ color: MAROON }}>{p.namaProgram}</p>
-                {p.deskripsi && <p className="text-xs text-muted-foreground mt-0.5 mb-2">{p.deskripsi}</p>}
-                <div className="h-1.5 rounded-full mt-2" style={{ backgroundColor: GOLD_SOFT }}>
-                  <div className="h-1.5 rounded-full w-1/2" style={{ backgroundColor: GOLD }} />
-                </div>
+            <Card>
+              <CardContent className="pt-6 pb-6 text-center">
+                <p className="text-sm text-muted-foreground">Belum ada program aktif</p>
               </CardContent>
             </Card>
-          ))}
+          ) : programs.map((p) => {
+            const stat = statsPerProgram[String(p.id)] ?? { terkumpul: 0, trxCount: 0, donaturIds: new Set<string>() }
+            const share = totalTerkumpul > 0 ? (stat.terkumpul / totalTerkumpul) * 100 : 0
+            const barWidth = stat.terkumpul === 0 ? 0 : Math.max(4, share)
+            return (
+              <Card key={p.id}>
+                <CardContent className="pt-4 pb-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-sm" style={{ color: MAROON }}>{p.namaProgram}</p>
+                      {p.deskripsi && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.deskripsi}</p>
+                      )}
+                    </div>
+                    {stat.terkumpul > 0 && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 text-[10px] font-semibold"
+                        style={{ borderColor: GOLD, color: GOLD }}
+                      >
+                        {share.toFixed(0)}%
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-lg font-bold leading-tight" style={{ color: MAROON }}>
+                      Rp {stat.terkumpul.toLocaleString('id-ID')}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      terkumpul dari {stat.trxCount} transaksi · {stat.donaturIds.size} donatur
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="h-1.5 rounded-full" style={{ backgroundColor: GOLD_SOFT }}>
+                      <div
+                        className="h-1.5 rounded-full transition-all"
+                        style={{ backgroundColor: GOLD, width: `${barWidth}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {share.toFixed(1)}% dari total dana terkumpul
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
         {/* Transaksi Terbaru */}
