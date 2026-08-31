@@ -8,6 +8,5 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
-  "compatibility_flags": ["nodejs_compat"],
-  "_comment": "IMPORTANT: Environment variables (DATABASE_URL, JWT_SECRET) should be set as Secrets in Cloudflare dashboard, not as vars in this file. Use 'wrangler secret put' or set via Cloudflare dashboard."
+  "compatibility_flags": ["nodejs_compat"]
 }
