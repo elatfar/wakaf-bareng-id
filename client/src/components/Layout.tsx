@@ -5,6 +5,7 @@ import {
   Users,
   FolderOpen,
   ScrollText,
+  FileCodeCorner,
   Settings,
   LogOut,
 } from 'lucide-react'
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { path: '/donatur', label: 'Donatur', icon: Users },
   { path: '/program', label: 'Program', icon: FolderOpen },
   { path: '/sertifikat', label: 'Sertifikat', icon: ScrollText },
+  { path: '/template', label: 'Template Sertifikat', icon: FileCodeCorner },
   { path: '/pengaturan', label: 'Pengaturan', icon: Settings },
 ]
 
