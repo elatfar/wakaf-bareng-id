@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { serveStatic } from "hono/bun";
 import { eq } from "drizzle-orm";
+import * as fs from "fs";
 import authRoutes from "./routes/auth";
 import donaturRoutes from "./routes/donatur";
 import programRoutes from "./routes/program";
@@ -13,7 +15,7 @@ import { authMiddleware } from "./middleware/auth";
 import { db } from "./db/client";
 import { sertifikat } from "./db/schema";
 
-// Main app
+// Main app for Bun development
 export const app = new Hono();
 
 // CORS - configured for single-origin deployment
@@ -22,12 +24,13 @@ app.use("*", cors({
   credentials: true,
 }));
 
+// Static file serving for storage/ (PDFs, etc.)
+app.use("/storage/*", serveStatic({ root: "./" }));
+
 // Health check
 app.get("/", (c) => c.json({ success: true, message: "Wakaf Bareng API" }));
 
 // Public sertifikat download endpoint (no /api prefix for direct browser/WhatsApp access)
-// Note: For Cloudflare Workers, file serving will need to be implemented differently
-// This endpoint needs to be adapted for Cloudflare R2 or similar storage
 app.get("/sertifikat/:id/download", async (c) => {
   const id = Number(c.req.param("id"));
   if (isNaN(id)) {
@@ -42,12 +45,19 @@ app.get("/sertifikat/:id/download", async (c) => {
     return c.json({ success: false, message: "Sertifikat tidak ditemukan" }, 404);
   }
 
-  // For Cloudflare Workers, this needs to be implemented with R2 or similar
-  // For now, return an error to indicate this needs implementation
-  return c.json({ 
-    success: false, 
-    message: "File download belum diimplementasikan untuk Cloudflare Workers. Gunakan Cloudflare R2 atau storage eksternal." 
-  }, 501);
+  if (!row.filePath || !fs.existsSync(row.filePath)) {
+    return c.json({ success: false, message: "File sertifikat tidak ditemukan" }, 404);
+  }
+
+  const fileBytes = fs.readFileSync(row.filePath);
+  const filename = `${row.noSertifikat.replace(/\//g, "-")}.pdf`;
+
+  return new Response(fileBytes, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
 });
 
 // API routes with /api prefix
