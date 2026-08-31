@@ -14,6 +14,9 @@ declare module "hono" {
   }
 }
 
+// JWT Secret configuration
+// For local development: uses process.env.JWT_SECRET
+// For Cloudflare Workers: would use c.env.JWT_SECRET binding
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "wakaf-bareng-jwt-secret-2026"
 );

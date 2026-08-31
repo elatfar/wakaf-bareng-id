@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
+import { eq } from "drizzle-orm";
+import * as fs from "fs";
 import authRoutes from "./routes/auth";
 import donaturRoutes from "./routes/donatur";
 import programRoutes from "./routes/program";
@@ -10,51 +12,89 @@ import transaksiRoutes from "./routes/transaksi";
 import sertifikatRoutes from "./routes/sertifikat";
 import templateRoutes from "./routes/template";
 import { authMiddleware } from "./middleware/auth";
+import { db } from "./db/client";
+import { sertifikat } from "./db/schema";
 
+// Main app
 export const app = new Hono();
 
-// CORS
-app.use("*", cors());
+// CORS - configured for single-origin deployment
+app.use("*", cors({
+  origin: "*", // Allow all origins for development, can be restricted in production
+  credentials: true,
+}));
 
 // Static file serving for storage/ (PDFs, etc.)
+// Note: In Cloudflare Workers, static files are served differently
+// This is kept for local development
 app.use("/storage/*", serveStatic({ root: "./" }));
 
+// Health check
+app.get("/", (c) => c.json({ success: true, message: "Wakaf Bareng API" }));
+
+// Public sertifikat download endpoint (no /api prefix for direct browser/WhatsApp access)
+app.get("/sertifikat/:id/download", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (isNaN(id)) {
+    return c.json({ success: false, message: "ID tidak valid" }, 400);
+  }
+
+  const row = await db.query.sertifikat.findFirst({
+    where: eq(sertifikat.id, id),
+  });
+
+  if (!row) {
+    return c.json({ success: false, message: "Sertifikat tidak ditemukan" }, 404);
+  }
+
+  if (!row.filePath || !fs.existsSync(row.filePath)) {
+    return c.json({ success: false, message: "File sertifikat tidak ditemukan" }, 404);
+  }
+
+  const fileBytes = fs.readFileSync(row.filePath);
+  const filename = `${row.noSertifikat.replace(/\//g, "-")}.pdf`;
+
+  return new Response(fileBytes, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
+});
+
+// API routes with /api prefix
+// Health check for API
+app.get("/api", (c) => c.json({ success: true, message: "Wakaf Bareng API" }));
+
 // Public routes (no auth required)
-app.route("/auth", authRoutes);
+app.route("/api/auth", authRoutes);
 
 // Sertifikat download endpoint — PUBLIC (diakses langsung via browser/WhatsApp)
-// Harus didaftarkan SEBELUM authMiddleware untuk /sertifikat/*
-app.use("/sertifikat/:id/download", async (c, next) => {
-  // Skip auth — langsung lanjut ke route handler
+app.use("/api/sertifikat/:id/download", async (c, next) => {
   await next();
 });
 
 // Protected routes (auth required for all)
-app.use("/donatur/*", authMiddleware);
-app.use("/program/*", authMiddleware);
-app.use("/pengguna/*", authMiddleware);
-app.use("/penandatangan/*", authMiddleware);
-app.use("/transaksi/*", authMiddleware);
-// Sertifikat: auth untuk semua KECUALI download (sudah ditangani di atas)
-app.use("/sertifikat/*", async (c, next) => {
+app.use("/api/donatur/*", authMiddleware);
+app.use("/api/program/*", authMiddleware);
+app.use("/api/pengguna/*", authMiddleware);
+app.use("/api/penandatangan/*", authMiddleware);
+app.use("/api/transaksi/*", authMiddleware);
+app.use("/api/sertifikat/*", async (c, next) => {
   if (c.req.path.endsWith("/download")) {
-    // Download sudah ditangani sebelumnya, skip auth
     await next();
     return;
   }
   return authMiddleware(c, next);
 });
-app.use("/template/*", authMiddleware);
+app.use("/api/template/*", authMiddleware);
 
-app.route("/donatur", donaturRoutes);
-app.route("/program", programRoutes);
-app.route("/pengguna", penggunaRoutes);
-app.route("/penandatangan", penandatanganRoutes);
-app.route("/transaksi", transaksiRoutes);
-app.route("/sertifikat", sertifikatRoutes);
-app.route("/template", templateRoutes);
-
-// Health check
-app.get("/", (c) => c.json({ success: true, message: "Wakaf Bareng API" }));
+app.route("/api/donatur", donaturRoutes);
+app.route("/api/program", programRoutes);
+app.route("/api/pengguna", penggunaRoutes);
+app.route("/api/penandatangan", penandatanganRoutes);
+app.route("/api/transaksi", transaksiRoutes);
+app.route("/api/sertifikat", sertifikatRoutes);
+app.route("/api/template", templateRoutes);
 
 export default app;

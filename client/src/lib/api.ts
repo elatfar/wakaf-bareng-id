@@ -9,7 +9,9 @@ import type {
   TemplateSertifikatDetail, BuatTemplateInput,
 } from "shared";
 
-const BASE_URL = (import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000";
+const BASE_URL = import.meta.env.DEV 
+  ? ((import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000/api")
+  : "/api";
 
 function getToken(): string | null {
   return localStorage.getItem("token");
@@ -93,7 +95,14 @@ export const sertifikatApi = {
     request<Sertifikat>(`/sertifikat/generate/${transaksiId}`, { method: "POST" }),
   updateStatus: (id: number, status: string, dikirimVia?: string) =>
     request<Sertifikat>(`/sertifikat/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, dikirimVia }) }),
-  downloadUrl: (id: number) => `${BASE_URL}/sertifikat/${id}/download`,
+  downloadUrl: (id: number) => {
+    // For downloads, we use the endpoint without /api prefix for direct browser/WhatsApp access
+    // This endpoint is available at /sertifikat/:id/download (not /api/sertifikat/:id/download)
+    const baseUrl = import.meta.env.DEV 
+      ? ((import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000")
+      : "";
+    return `${baseUrl}/sertifikat/${id}/download`;
+  },
 };
 
 // ─── Template ─────────────────────────────────────────────────────────────────
