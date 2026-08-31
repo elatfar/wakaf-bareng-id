@@ -2,6 +2,41 @@
 
 This guide explains how to deploy Wakaf Bareng ID to Cloudflare Workers using the single-origin setup.
 
+## ⚠️ CRITICAL: Environment Variables & Secrets
+
+**IMPORTANT SECURITY WARNING:**
+
+1. **Never commit secrets to git**: DATABASE_URL, JWT_SECRET, and other sensitive data should never be in `wrangler.jsonc`, `wrangler.toml`, or committed to repository
+2. **Use Cloudflare Secrets**: Set secrets via Cloudflare Dashboard or `wrangler secret put` command
+3. **Secrets vs Vars**: 
+   - ✅ **Secrets**: Set via dashboard/CLI, persist across deployments, never in git
+   - ❌ **Vars**: Set in config files, get overwritten by deployments, should only contain non-sensitive data
+
+### Setting Secrets (Required for Deployment)
+
+**Via Cloudflare Dashboard:**
+1. Go to Cloudflare Dashboard → Workers & Pages
+2. Select your worker → Settings → Variables and Secrets
+3. Add **Encrypted** secrets:
+   - `DATABASE_URL`: Your PostgreSQL connection string
+   - `JWT_SECRET`: Your JWT secret key
+
+**Via CLI:**
+```bash
+bunx wrangler secret put DATABASE_URL
+# Enter your DATABASE_URL when prompted
+
+bunx wrangler secret put JWT_SECRET
+# Enter your JWT_SECRET when prompted
+```
+
+**Via `.dev.vars` for local development:**
+```bash
+# server/.dev.vars (already in .gitignore)
+DATABASE_URL=postgresql://...
+JWT_SECRET=your-secret-here
+```
+
 ## ⚠️ Important Notes
 
 ### Current Limitations

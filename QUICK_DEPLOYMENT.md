@@ -2,6 +2,17 @@
 
 This guide provides the quickest path to deploy Wakaf Bareng ID to production using services that support the current technology stack.
 
+## ⚠️ CRITICAL: Environment Variables Security
+
+**IMPORTANT:** Never commit secrets (DATABASE_URL, JWT_SECRET) to git repository or put them in `wrangler.jsonc`/`wrangler.toml`. 
+
+For Cloudflare deployment:
+- ✅ **DO**: Set secrets via Cloudflare Dashboard or `wrangler secret put`
+- ❌ **DON'T**: Put secrets in `wrangler.jsonc` vars section
+- ❌ **DON'T**: Commit secrets to git
+
+Secrets set via dashboard/CLI won't be overwritten by deployments from git.
+
 ## 🚀 Recommended Approach: Split Deployment
 
 Deploy frontend to Cloudflare Pages (static hosting) and backend to Railway (supports Bun + PostgreSQL).

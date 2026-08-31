@@ -2,11 +2,12 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "wakaf-bareng-id",
   "main": "./server/dist/index.js",
-  "compatibility_date": "2025-05-25",
+  "compatibility_date": "2026-08-31",
   "assets": {
     "directory": "./client/dist",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "_comment": "IMPORTANT: Environment variables (DATABASE_URL, JWT_SECRET) should be set as Secrets in Cloudflare dashboard, not as vars in this file. Use 'wrangler secret put' or set via Cloudflare dashboard."
 }
