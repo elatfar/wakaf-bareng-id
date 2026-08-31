@@ -48,7 +48,34 @@ app.post("/", requireRole(["superadmin"]), async (c) => {
   return c.json<ApiResponse<Program>>({ success: true, message: "Program berhasil dibuat", data: row! }, 201);
 });
 
-// PATCH /program/:id (superadmin only)
+// PUT /program/:id (superadmin only) — update nama dan deskripsi
+app.put("/:id", requireRole(["superadmin"]), async (c) => {
+  const id = Number(c.req.param("id"));
+  const body = await c.req.json<Partial<BuatProgramInput>>();
+
+  const db = getDb();
+  const existing = await db.query.program.findFirst({ where: eq(program.id, id) });
+  if (!existing) {
+    return c.json<ApiResponse>({ success: false, message: "Program tidak ditemukan" }, 404);
+  }
+
+  if (body.namaProgram !== undefined && body.namaProgram.trim() === "") {
+    return c.json<ApiResponse>({ success: false, message: "Nama program wajib diisi" }, 400);
+  }
+
+  const [row] = await db
+    .update(program)
+    .set({
+      namaProgram: body.namaProgram?.trim() ?? existing.namaProgram,
+      deskripsi: body.deskripsi ?? existing.deskripsi,
+    })
+    .where(eq(program.id, id))
+    .returning();
+
+  return c.json<ApiResponse<Program>>({ success: true, message: "Program berhasil diperbarui", data: row! });
+});
+
+// PATCH /program/:id (superadmin only) — toggle aktif
 app.patch("/:id", requireRole(["superadmin"]), async (c) => {
   const id = Number(c.req.param("id"));
   const body = await c.req.json<{ aktif: boolean }>();

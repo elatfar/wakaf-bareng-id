@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Wallet,
   Users,
+  FolderOpen,
   ScrollText,
   Settings,
   LogOut,
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/transaksi', label: 'Transaksi', icon: Wallet },
   { path: '/donatur', label: 'Donatur', icon: Users },
+  { path: '/program', label: 'Program', icon: FolderOpen },
   { path: '/sertifikat', label: 'Sertifikat', icon: ScrollText },
   { path: '/pengaturan', label: 'Pengaturan', icon: Settings },
 ]

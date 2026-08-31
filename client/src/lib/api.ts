@@ -57,6 +57,8 @@ export const programApi = {
     request<Program[]>(`/program${aktif ? "?aktif=true" : ""}`),
   create: (body: BuatProgramInput) =>
     request<Program>("/program", { method: "POST", body: JSON.stringify(body) }),
+  update: (id: number, body: Partial<BuatProgramInput>) =>
+    request<Program>(`/program/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   setAktif: (id: number, aktif: boolean) =>
     request<Program>(`/program/${id}`, { method: "PATCH", body: JSON.stringify({ aktif }) }),
 };
