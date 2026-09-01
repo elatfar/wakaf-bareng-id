@@ -124,7 +124,7 @@ export async function renderSertifikatPDF(
   }
 
   if (layoutField.noSertifikat && data.noSertifikat) {
-    drawField(`No: ${data.noSertifikat}`, layoutField.noSertifikat);
+    drawField(`${data.noSertifikat}`, layoutField.noSertifikat);
   }
 
   if (layoutField.tanggalTerbit && data.tanggalTerbit) {
