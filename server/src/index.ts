@@ -83,7 +83,7 @@ app.use("/api/pengguna/*", authMiddleware);
 app.use("/api/penandatangan/*", authMiddleware);
 app.use("/api/transaksi/*", authMiddleware);
 app.use("/api/sertifikat/*", async (c, next) => {
-  if (c.req.path.endsWith("/download")) {
+  if (c.req.path.endsWith("/download") || c.req.path.endsWith("/pdf")) {
     await next();
     return;
   }
