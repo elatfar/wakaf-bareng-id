@@ -2,11 +2,19 @@ import { sql } from "drizzle-orm";
 import type { DrizzleDb } from "../db/client";
 import { transaksi, sertifikat } from "../db/schema";
 
-export type NomorPrefix = "TRX" | "CERT";
+export type NomorPrefix =
+  | "TRX"
+  | "CERT"
+  | "TRX-WKF"
+  | "TRX-ZKT"
+  | "CERT-WKF"
+  | "CERT-ZKT"
+  | string;
 
 /**
  * Pure helper — build formatted number string. Testable without DB.
  * Format: PREFIX/YYYY/MM/NNNNN (5-digit zero-padded sequence)
+ * e.g. CERT-WKF/2026/09/00001 or CERT-ZKT/2026/09/00001
  */
 export function buildNomorString(
   prefix: NomorPrefix,
@@ -47,7 +55,7 @@ export async function generateNomor(
 
     // Count existing records for this prefix/month to derive next sequence number.
     let count = 0;
-    if (prefix === "TRX") {
+    if (prefix.startsWith("TRX")) {
       const result = await tx
         .select({ count: sql<number>`COUNT(*)::int` })
         .from(transaksi)

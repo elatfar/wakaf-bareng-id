@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, FileImage, CheckCircle2, Link, Eye, EyeOff, ChevronDown, ChevronUp,
-  AlignLeft, AlignCenter, AlignRight, Bold, Move, Pencil,
+  AlignLeft, AlignCenter, AlignRight, Bold, Move, Pencil, Trash2, X,
 } from 'lucide-react'
 import { templateApi } from '@/lib/api'
-import type { BuatTemplateInput, LayoutField, TemplateSertifikat } from 'shared'
+import type { BuatTemplateInput, LayoutField, LayoutFieldItem, TemplateSertifikat } from 'shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,42 +20,74 @@ const MAROON = '#2B0F17'
 const GOLD = '#B8863F'
 const GOLD_SOFT = '#F3E7DC'
 
-const DEFAULT_LAYOUT: LayoutField = {
-  namaDonatur: { x: 1000, y: 720, size: 58, align: 'center', bold: true },
-  deskripsiWakaf: { x: 1000, y: 900, size: 36, align: 'center', bold: false },
-  jumlahTerbilang: { x: 1000, y: 955, size: 34, align: 'center', bold: true },
-  noSertifikat: { x: 1820, y: 1345, size: 22, align: 'right', bold: false },
-  tanggalTerbit: { x: 1820, y: 1375, size: 22, align: 'right', bold: false },
-  canvasWidth: 2000,
-  canvasHeight: 1414,
-}
+export type FieldKey =
+  | 'namaDonatur'
+  | 'alamat'
+  | 'program'
+  | 'nominalAngka'
+  | 'deskripsiWakaf'
+  | 'jumlahTerbilang'
+  | 'noSertifikat'
+  | 'tanggalTerbit'
 
-type AlignValue = 'left' | 'center' | 'right'
-type FieldKey = 'namaDonatur' | 'deskripsiWakaf' | 'jumlahTerbilang' | 'noSertifikat' | 'tanggalTerbit'
-
-const FIELD_LABELS: Record<FieldKey, string> = {
+export const FIELD_LABELS: Record<FieldKey, string> = {
   namaDonatur: 'Nama Donatur',
+  alamat: 'Alamat Donatur',
+  program: 'Program',
+  nominalAngka: 'Nominal Angka (3 Digit)',
   deskripsiWakaf: 'Deskripsi Wakaf',
   jumlahTerbilang: 'Jumlah Terbilang',
   noSertifikat: 'No. Sertifikat',
   tanggalTerbit: 'Tanggal Terbit',
 }
 
-// Contoh teks yang ditampilkan di canvas supaya posisi & ukuran terasa nyata,
-// bukan sekadar kotak kosong.
-const FIELD_SAMPLE: Record<FieldKey, string> = {
+// Contoh teks yang ditampilkan di canvas supaya posisi & ukuran terasa nyata
+export const FIELD_SAMPLE: Record<FieldKey, string> = {
   namaDonatur: 'Budi Santoso',
+  alamat: 'Jl. Margorejo Indah No. 50, Surabaya',
+  program: 'Wakaf Produktif Masjid',
+  nominalAngka: 'Rp 100.000.000',
   deskripsiWakaf: 'Telah mewakafkan tanah seluas 100 m²',
   jumlahTerbilang: 'Seratus Juta Rupiah',
-  noSertifikat: 'No. 001/WKF/2026',
+  noSertifikat: 'CERT-WKF/2026/09/00001',
   tanggalTerbit: '1 September 2026',
 }
 
-const FIELD_KEYS: FieldKey[] = [
-  'namaDonatur', 'deskripsiWakaf', 'jumlahTerbilang', 'noSertifikat', 'tanggalTerbit'
+export const ALL_FIELD_KEYS: FieldKey[] = [
+  'namaDonatur',
+  'alamat',
+  'program',
+  'nominalAngka',
+  'deskripsiWakaf',
+  'jumlahTerbilang',
+  'noSertifikat',
+  'tanggalTerbit',
 ]
 
-/** Canvas visual: background sertifikat + label tiap field yang bisa diseret (drag) langsung untuk mengatur posisi x/y. */
+export const DEFAULT_FIELD_CONFIG: Record<FieldKey, LayoutFieldItem> = {
+  namaDonatur: { x: 1000, y: 680, size: 56, align: 'center', bold: true },
+  alamat: { x: 1000, y: 740, size: 30, align: 'center', bold: false },
+  program: { x: 1000, y: 820, size: 36, align: 'center', bold: true },
+  nominalAngka: { x: 1000, y: 880, size: 38, align: 'center', bold: true },
+  deskripsiWakaf: { x: 1000, y: 940, size: 32, align: 'center', bold: false },
+  jumlahTerbilang: { x: 1000, y: 1000, size: 32, align: 'center', bold: false },
+  noSertifikat: { x: 1820, y: 1345, size: 22, align: 'right', bold: false },
+  tanggalTerbit: { x: 1820, y: 1375, size: 22, align: 'right', bold: false },
+}
+
+const DEFAULT_LAYOUT: LayoutField = {
+  namaDonatur: DEFAULT_FIELD_CONFIG.namaDonatur,
+  deskripsiWakaf: DEFAULT_FIELD_CONFIG.deskripsiWakaf,
+  jumlahTerbilang: DEFAULT_FIELD_CONFIG.jumlahTerbilang,
+  noSertifikat: DEFAULT_FIELD_CONFIG.noSertifikat,
+  tanggalTerbit: DEFAULT_FIELD_CONFIG.tanggalTerbit,
+  canvasWidth: 2000,
+  canvasHeight: 1414,
+}
+
+type AlignValue = 'left' | 'center' | 'right'
+
+/** Canvas visual: background sertifikat + label tiap field aktif yang bisa diseret (drag) langsung untuk mengatur posisi x/y. */
 function PositionCanvas({
   backgroundUrl, canvasWidth, canvasHeight, layout, selected, onSelect, onChangePosition,
 }: {
@@ -63,7 +95,7 @@ function PositionCanvas({
   canvasWidth: number
   canvasHeight: number
   layout: LayoutField
-  selected: FieldKey
+  selected: FieldKey | null
   onSelect: (key: FieldKey) => void
   onChangePosition: (key: FieldKey, x: number, y: number) => void
 }) {
@@ -86,7 +118,7 @@ function PositionCanvas({
     e.stopPropagation()
     onSelect(key)
     setDraggingKey(key)
-      ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
   function handleMove(e: React.PointerEvent<HTMLDivElement>, key: FieldKey) {
     if (draggingKey !== key) return
@@ -99,6 +131,7 @@ function PositionCanvas({
   }
 
   const showPlaceholder = !backgroundUrl || imgError
+  const activeKeys = ALL_FIELD_KEYS.filter((k) => Boolean(layout[k]))
 
   return (
     <div
@@ -107,8 +140,6 @@ function PositionCanvas({
       style={{
         aspectRatio: `${canvasWidth} / ${canvasHeight}`,
         borderColor: GOLD,
-        // container query units (cqw) dipakai supaya ukuran font teks di canvas
-        // ikut menyesuaikan lebar canvas tanpa perlu hitung ulang lewat JS.
         containerType: 'inline-size',
         backgroundColor: '#EDE4D8',
         backgroundImage: showPlaceholder
@@ -134,8 +165,9 @@ function PositionCanvas({
         </div>
       )}
 
-      {FIELD_KEYS.map((key) => {
-        const field = layout[key] as LayoutField[FieldKey]
+      {activeKeys.map((key) => {
+        const field = layout[key] as LayoutFieldItem
+        if (!field) return null
         const isSelected = key === selected
         const translate =
           field.align === 'left' ? '0%, -50%' :
@@ -177,13 +209,14 @@ function PositionCanvas({
   )
 }
 
-/** Panel kontrol untuk field yang sedang dipilih: ukuran, alignment, ketebalan, dan x/y presisi. */
+/** Panel kontrol untuk field yang sedang dipilih: ukuran, alignment, ketebalan, x/y presisi, dan opsi exclude. */
 function FieldControlPanel({
-  label, field, onChange,
+  label, field, onChange, onRemove,
 }: {
   label: string
-  field: LayoutField[FieldKey]
-  onChange: (updated: LayoutField[FieldKey]) => void
+  field: LayoutFieldItem
+  onChange: (updated: LayoutFieldItem) => void
+  onRemove?: () => void
 }) {
   const alignOptions: { value: AlignValue; Icon: typeof AlignLeft }[] = [
     { value: 'left', Icon: AlignLeft },
@@ -199,7 +232,7 @@ function FieldControlPanel({
       </div>
 
       <div className="space-y-3">
-        {/* Baris 1: Ukuran Teks (Mengambil 1 baris penuh agar slider tidak sesak) */}
+        {/* Baris 1: Ukuran Teks */}
         <div className="space-y-1">
           <Label className="text-[10px]">Ukuran Teks</Label>
           <div className="flex items-center gap-2">
@@ -267,7 +300,7 @@ function FieldControlPanel({
         </div>
       </div>
 
-      {/* X/Y presisi tetap tersedia untuk yang butuh angka pasti, tersinkron dengan drag di canvas */}
+      {/* X/Y presisi tersinkron dengan drag di canvas */}
       <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
         <div className="space-y-1">
           <Label className="text-[10px]">X (px)</Label>
@@ -288,6 +321,22 @@ function FieldControlPanel({
           />
         </div>
       </div>
+
+      {/* Tombol Exclude / Hapus Field */}
+      {onRemove && (
+        <div className="pt-2 border-t border-border/60">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRemove}
+            className="w-full text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30 gap-1.5 h-8"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Exclude / Hapus dari Template
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -299,13 +348,14 @@ export default function TemplateEditorPage() {
   const [previewBg, setPreviewBg] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(true)
   const [bgError, setBgError] = useState(false)
-  const [selectedField, setSelectedField] = useState<FieldKey>('namaDonatur')
+  const [selectedField, setSelectedField] = useState<FieldKey | null>('namaDonatur')
 
-  const [form, setForm] = useState<BuatTemplateInput>({
+  const [form, setForm] = useState<BuatTemplateInput & { tipe?: string }>({
     namaTemplate: '',
     fileBackground: '',
     layoutField: DEFAULT_LAYOUT,
-  })
+    tipe: 'wakaf',
+  } as any)
   const [formError, setFormError] = useState('')
 
   const { data: tmplRes, isLoading } = useQuery({
@@ -313,6 +363,8 @@ export default function TemplateEditorPage() {
     queryFn: templateApi.list,
   })
   const templates = tmplRes?.data ?? []
+  const activeWakafTemplate = templates.find((t) => t.aktif && (t as any).tipe === 'wakaf')
+  const activeZakatTemplate = templates.find((t) => t.aktif && (t as any).tipe === 'zakat')
   const activeTemplate = templates.find((t) => t.aktif)
 
   const createMutation = useMutation({
@@ -349,29 +401,72 @@ export default function TemplateEditorPage() {
     setBgError(false)
     setShowAdvanced(true)
     setSelectedField('namaDonatur')
-    setForm({ namaTemplate: '', fileBackground: '', layoutField: DEFAULT_LAYOUT })
+    setForm({ namaTemplate: '', fileBackground: '', layoutField: DEFAULT_LAYOUT, tipe: 'wakaf' } as any)
   }
 
   function openEdit(t: TemplateSertifikat) {
     setEditId(t.id)
+    const raw = (t.layoutField || {}) as any
+    const normalizedLayout: LayoutField = {
+      canvasWidth: raw.canvasWidth || 2000,
+      canvasHeight: raw.canvasHeight || 1414,
+    }
+    if (raw.namaDonatur) normalizedLayout.namaDonatur = raw.namaDonatur
+    if (raw.alamat || raw.alamatDonatur) normalizedLayout.alamat = raw.alamat || raw.alamatDonatur
+    if (raw.program || raw.namaProgram) normalizedLayout.program = raw.program || raw.namaProgram
+    if (raw.nominalAngka || raw.nominal) normalizedLayout.nominalAngka = raw.nominalAngka || raw.nominal
+    if (raw.deskripsiWakaf) normalizedLayout.deskripsiWakaf = raw.deskripsiWakaf
+    if (raw.jumlahTerbilang) normalizedLayout.jumlahTerbilang = raw.jumlahTerbilang
+    if (raw.noSertifikat) normalizedLayout.noSertifikat = raw.noSertifikat
+    if (raw.tanggalTerbit) normalizedLayout.tanggalTerbit = raw.tanggalTerbit
+
     setForm({
       namaTemplate: t.namaTemplate,
       fileBackground: t.fileBackground,
-      layoutField: t.layoutField as LayoutField,
-    })
+      layoutField: normalizedLayout,
+      tipe: (t as any).tipe ?? 'wakaf',
+    } as any)
     setFormError('')
     setPreviewBg(false)
     setBgError(false)
     setShowAdvanced(true)
-    setSelectedField('namaDonatur')
+
+    const activeKeys = ALL_FIELD_KEYS.filter((k) => normalizedLayout[k])
+    setSelectedField(activeKeys[0] || null)
     setOpen(true)
   }
 
-  function updateField(key: FieldKey, value: LayoutField[FieldKey]) {
+  function updateField(key: FieldKey, value: LayoutFieldItem) {
     setForm((prev) => ({
       ...prev,
       layoutField: { ...prev.layoutField, [key]: value },
     }))
+  }
+
+  function addField(key: FieldKey) {
+    setForm((prev) => ({
+      ...prev,
+      layoutField: {
+        ...prev.layoutField,
+        [key]: DEFAULT_FIELD_CONFIG[key],
+      },
+    }))
+    setSelectedField(key)
+  }
+
+  function removeField(key: FieldKey) {
+    setForm((prev) => {
+      const nextLayout = { ...prev.layoutField }
+      delete nextLayout[key]
+      return {
+        ...prev,
+        layoutField: nextLayout,
+      }
+    })
+    if (selectedField === key) {
+      const remaining = ALL_FIELD_KEYS.filter((k) => k !== key && form.layoutField[k])
+      setSelectedField(remaining.length > 0 ? remaining[0] : null)
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -386,6 +481,9 @@ export default function TemplateEditorPage() {
     }
   }
 
+  const activeFields = ALL_FIELD_KEYS.filter((k) => Boolean(form.layoutField[k]))
+  const inactiveFields = ALL_FIELD_KEYS.filter((k) => !form.layoutField[k])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -393,7 +491,7 @@ export default function TemplateEditorPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: MAROON }}>Template Sertifikat</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Kelola desain dan layout sertifikat wakaf
+            Kelola desain dan layout sertifikat wakaf & zakat
           </p>
         </div>
         <Button
@@ -408,29 +506,42 @@ export default function TemplateEditorPage() {
       </div>
 
       {/* Active template highlight */}
-      {activeTemplate && (
-        <div
-          className="rounded-xl border-2 p-4 flex items-center gap-4"
-          style={{ borderColor: GOLD, backgroundColor: GOLD_SOFT }}
-        >
-          {activeTemplate.fileBackground && (
-            <img
-              src={activeTemplate.fileBackground}
-              alt="bg"
-              className="h-20 w-32 rounded-md object-cover border border-black/10 shrink-0"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-            />
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: GOLD }} />
-              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: GOLD }}>
-                Template Aktif
-              </span>
+      {(activeWakafTemplate || activeZakatTemplate || (!activeWakafTemplate && !activeZakatTemplate && activeTemplate)) && (
+        <div className="space-y-3">
+          {[
+            activeWakafTemplate ?? (!activeWakafTemplate && !activeZakatTemplate ? activeTemplate : null),
+            activeZakatTemplate,
+          ]
+            .filter(Boolean)
+            .map((tmpl) => tmpl && (
+            <div
+              key={tmpl.id}
+              className="rounded-xl border-2 p-4 flex items-center gap-4"
+              style={{ borderColor: GOLD, backgroundColor: GOLD_SOFT }}
+            >
+              {tmpl.fileBackground && (
+                <img
+                  src={tmpl.fileBackground}
+                  alt="bg"
+                  className="h-20 w-32 rounded-md object-cover border border-black/10 shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: GOLD }} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: GOLD }}>
+                    Template Aktif
+                  </span>
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {(tmpl as any).tipe ?? 'wakaf'}
+                  </Badge>
+                </div>
+                <p className="font-semibold" style={{ color: MAROON }}>{tmpl.namaTemplate}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{tmpl.fileBackground}</p>
+              </div>
             </div>
-            <p className="font-semibold" style={{ color: MAROON }}>{activeTemplate.namaTemplate}</p>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{activeTemplate.fileBackground}</p>
-          </div>
+          ))}
         </div>
       )}
 
@@ -492,6 +603,9 @@ export default function TemplateEditorPage() {
                         ★ Aktif
                       </Badge>
                     )}
+                    <Badge variant="outline" className="text-xs capitalize shrink-0">
+                      {(t as any).tipe ?? 'wakaf'}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
                     <Link className="h-3 w-3 shrink-0" />
@@ -535,7 +649,7 @@ export default function TemplateEditorPage() {
         </div>
       )}
 
-      {/* Dialog Tambah */}
+      {/* Dialog Tambah / Edit */}
       <Dialog open={open} onOpenChange={(o) => { if (!o) closeDialog() }}>
         <DialogContent className="w-[95vw] sm:max-w-[95vw] lg:max-w-7xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
@@ -543,6 +657,23 @@ export default function TemplateEditorPage() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+            {/* Tipe Template */}
+            <div className="space-y-1.5">
+              <Label htmlFor="tipeTemplate">
+                Tipe <span className="text-destructive">*</span>
+              </Label>
+              <select
+                id="tipeTemplate"
+                value={(form as any).tipe ?? 'wakaf'}
+                onChange={(e) => setForm({ ...form, tipe: e.target.value } as any)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <option value="wakaf">Wakaf</option>
+                <option value="zakat">Zakat</option>
+              </select>
+            </div>
+
             {/* Nama */}
             <div className="space-y-1.5">
               <Label htmlFor="namaTemplate">
@@ -642,14 +773,14 @@ export default function TemplateEditorPage() {
               </div>
             </div>
 
-            {/* Layout Fields — canvas interaktif drag & drop */}
+            {/* Layout Fields — canvas interaktif drag & drop & konfigurasi variabel */}
             <div className="rounded-xl border border-border overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowAdvanced((v) => !v)}
                 className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
               >
-                <span>Atur Posisi Teks</span>
+                <span>Atur Posisi & Variabel Teks</span>
                 {showAdvanced
                   ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   : <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -657,49 +788,109 @@ export default function TemplateEditorPage() {
               </button>
 
               {showAdvanced && (
-                <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
                   <p className="text-xs text-muted-foreground">
-                    Seret label langsung di canvas untuk mengatur posisi, atau klik salah satu label
-                    untuk mengubah ukuran, alignment, dan ketebalannya.
+                    Kelola variabel yang ingin disertakan pada sertifikat. Seret label langsung di canvas untuk mengatur posisi, atau klik salah satu label untuk mengubah ukuran, alignment, dan ketebalannya.
                   </p>
 
-                  {/* Chip pemilih field — berguna kalau posisi label saling menumpuk di canvas */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {FIELD_KEYS.map((key) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setSelectedField(key)}
-                        className="rounded-full border px-2.5 py-1 text-xs transition-colors"
-                        style={
-                          selectedField === key
-                            ? { backgroundColor: MAROON, borderColor: MAROON, color: '#fff' }
-                            : { borderColor: 'var(--border)', color: MAROON }
-                        }
-                      >
-                        {FIELD_LABELS[key]}
-                      </button>
-                    ))}
+                  {/* Kelompok Variabel Aktif (Included) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">
+                      Variabel Aktif ({activeFields.length})
+                    </Label>
+                    {activeFields.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic py-1">
+                        Belum ada variabel yang disertakan. Klik variabel di bawah untuk menambahkannya.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeFields.map((key) => {
+                          const isSelected = selectedField === key
+                          return (
+                            <div
+                              key={key}
+                              className="inline-flex items-center rounded-full border transition-all overflow-hidden"
+                              style={{
+                                borderColor: isSelected ? MAROON : GOLD,
+                                backgroundColor: isSelected ? MAROON : GOLD_SOFT,
+                                color: isSelected ? '#fff' : MAROON,
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setSelectedField(key)}
+                                className="px-3 py-1 text-xs font-medium focus:outline-none"
+                              >
+                                {FIELD_LABELS[key]}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeField(key)
+                                }}
+                                className="pr-2 pl-1 py-1 hover:opacity-75 focus:outline-none"
+                                title={`Exclude ${FIELD_LABELS[key]}`}
+                                aria-label={`Exclude ${FIELD_LABELS[key]}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-4 items-start">
+                  {/* Kelompok Variabel Opsional (Excluded / Bisa ditambahkan) */}
+                  {inactiveFields.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Tambah Variabel Lain (Opsional):
+                      </Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {inactiveFields.map((key) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => addField(key)}
+                            className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/50 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <Plus className="h-3 w-3" />
+                            {FIELD_LABELS[key]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Canvas dan Panel Kontrol Field */}
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-4 items-start pt-2">
                     <PositionCanvas
                       backgroundUrl={form.fileBackground}
                       canvasWidth={form.layoutField.canvasWidth}
                       canvasHeight={form.layoutField.canvasHeight}
                       layout={form.layoutField}
                       selected={selectedField}
-                      onSelect={setSelectedField}
-                      onChangePosition={(key, x, y) =>
-                        updateField(key, { ...(form.layoutField[key] as LayoutField[FieldKey]), x, y })
-                      }
+                      onSelect={(k) => setSelectedField(k)}
+                      onChangePosition={(key, x, y) => {
+                        const current = form.layoutField[key]
+                        if (current) updateField(key, { ...current, x, y })
+                      }}
                     />
 
-                    <FieldControlPanel
-                      label={FIELD_LABELS[selectedField]}
-                      field={form.layoutField[selectedField] as LayoutField[FieldKey]}
-                      onChange={(val) => updateField(selectedField, val)}
-                    />
+                    {selectedField && form.layoutField[selectedField] ? (
+                      <FieldControlPanel
+                        label={FIELD_LABELS[selectedField]}
+                        field={form.layoutField[selectedField] as LayoutFieldItem}
+                        onChange={(val) => updateField(selectedField, val)}
+                        onRemove={() => removeField(selectedField)}
+                      />
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+                        Pilih salah satu variabel aktif untuk mengedit posisinya.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

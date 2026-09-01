@@ -27,6 +27,7 @@ export const statusSertifikatEnum = pgEnum("status_sertifikat", [
   "dicetak",
   "dikirim",
 ]);
+export const tipeEnum = pgEnum("tipe", ["wakaf", "zakat"]);
 
 // === Tables ===
 export const donatur = pgTable("donatur", {
@@ -44,6 +45,7 @@ export const donatur = pgTable("donatur", {
 export const program = pgTable("program", {
   id: serial("id").primaryKey(),
   namaProgram: text("nama_program").notNull(),
+  tipe: tipeEnum("tipe").notNull().default("wakaf"),
   deskripsi: text("deskripsi"),
   targetDana: numeric("target_dana", { precision: 15, scale: 2 }),
   aktif: boolean("aktif").notNull().default(true),
@@ -73,6 +75,7 @@ export const penandatangan = pgTable("penandatangan", {
 export const templateSertifikat = pgTable("template_sertifikat", {
   id: serial("id").primaryKey(),
   namaTemplate: text("nama_template").notNull(),
+  tipe: tipeEnum("tipe").notNull().default("wakaf"),
   fileBackground: text("file_background").notNull(),
   layoutField: jsonb("layout_field").notNull().$type<LayoutField>(),
   penandatangan1Id: integer("penandatangan_1_id").references(
@@ -94,6 +97,7 @@ export const transaksi = pgTable("transaksi", {
     .notNull()
     .references(() => program.id),
   jenis: jenisWakafEnum("jenis").notNull(),
+  tipe: tipeEnum("tipe").notNull().default("wakaf"),
   deskripsiBarang: text("deskripsi_barang"),
   jumlah: numeric("jumlah", { precision: 15, scale: 2 }).notNull(),
   jumlahTerbilang: text("jumlah_terbilang").notNull(),

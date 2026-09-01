@@ -53,11 +53,12 @@ export const donaturApi = {
 
 // ─── Program ─────────────────────────────────────────────────────────────────
 export const programApi = {
-  list: (params?: { aktif?: boolean; kategori?: string; search?: string }) => {
+  list: (params?: { aktif?: boolean; kategori?: string; search?: string; tipe?: string }) => {
     const queryParams = new URLSearchParams();
     if (params?.aktif !== undefined) queryParams.append("aktif", params.aktif.toString());
     if (params?.kategori) queryParams.append("kategori", params.kategori);
     if (params?.search) queryParams.append("search", params.search);
+    if (params?.tipe) queryParams.append("tipe", params.tipe);
     const queryString = queryParams.toString();
     return request<Program[]>(`/program${queryString ? `?${queryString}` : ""}`);
   },
@@ -90,7 +91,14 @@ export const penandatanganApi = {
 
 // ─── Transaksi ────────────────────────────────────────────────────────────────
 export const transaksiApi = {
-  list: () => request<TransaksiDetail[]>("/transaksi"),
+  list: (params?: { tipe?: string; status?: string; programId?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.tipe) queryParams.append("tipe", params.tipe);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.programId) queryParams.append("programId", params.programId.toString());
+    const queryString = queryParams.toString();
+    return request<TransaksiDetail[]>(`/transaksi${queryString ? `?${queryString}` : ""}`);
+  },
   get: (id: number) => request<TransaksiDetail>(`/transaksi/${id}`),
   create: (body: BuatTransaksiInput) =>
     request<TransaksiDetail>("/transaksi", { method: "POST", body: JSON.stringify(body) }),
@@ -105,7 +113,7 @@ export const sertifikatApi = {
   updateStatus: (id: number, status: string, dikirimVia?: string) =>
     request<Sertifikat>(`/sertifikat/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, dikirimVia }) }),
   // Direct PDF URL by transaksiId — browser navigates to this, triggers download + creates record
-  pdfUrlByTrx: (transaksiId: number) => `${BASE_URL}/sertifikat/by-transaksi/${transaksiId}/pdf`,
+  pdfUrlByTrx: (transaksiId: number) => `${BASE_URL}/cetak/${transaksiId}`,
   // Backward compat — download by sertifikat id
   downloadUrl: (id: number) => `${BASE_URL}/sertifikat/${id}/download`,
 };

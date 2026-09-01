@@ -1,4 +1,5 @@
 import type { Penandatangan } from "./penandatangan";
+import type { TipeDana } from "./program";
 
 export interface LayoutFieldItem {
   x: number;
@@ -9,11 +10,16 @@ export interface LayoutFieldItem {
 }
 
 export interface LayoutField {
-  namaDonatur: LayoutFieldItem;
-  deskripsiWakaf: LayoutFieldItem;
-  jumlahTerbilang: LayoutFieldItem;
-  noSertifikat: LayoutFieldItem;
-  tanggalTerbit: LayoutFieldItem;
+  namaDonatur?: LayoutFieldItem;
+  alamatDonatur?: LayoutFieldItem;
+  alamat?: LayoutFieldItem;
+  namaProgram?: LayoutFieldItem;
+  program?: LayoutFieldItem;
+  nominalAngka?: LayoutFieldItem;
+  deskripsiWakaf?: LayoutFieldItem;
+  jumlahTerbilang?: LayoutFieldItem;
+  noSertifikat?: LayoutFieldItem;
+  tanggalTerbit?: LayoutFieldItem;
   canvasWidth: number;
   canvasHeight: number;
 }
@@ -21,6 +27,7 @@ export interface LayoutField {
 export interface TemplateSertifikat {
   id: number;
   namaTemplate: string;
+  tipe: TipeDana;
   fileBackground: string;
   layoutField: LayoutField;
   penandatangan1Id: number | null;
@@ -35,6 +42,7 @@ export interface TemplateSertifikatDetail extends TemplateSertifikat {
 
 export interface BuatTemplateInput {
   namaTemplate: string;
+  tipe: TipeDana;
   fileBackground: string;
   layoutField: LayoutField;
   penandatangan1Id?: number;

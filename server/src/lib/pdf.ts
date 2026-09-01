@@ -6,7 +6,11 @@ export interface RenderData {
   noTransaksi: string;
   noSertifikat: string;
   namaDonatur: string;
+  alamatDonatur?: string;
+  alamat?: string;
   namaProgram: string;
+  program?: string;
+  nominalAngka?: string;
   jenis: "uang" | "barang";
   jumlahTerbilang: string;
   tanggalTerbit: string;
@@ -77,6 +81,7 @@ export async function renderSertifikatPDF(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   function drawField(text: string, field: LayoutFieldItem): void {
+    if (!text) return;
     const font = field.bold ? fontBold : fontRegular;
     const fontSize = field.size;
     const textWidth = font.widthOfTextAtSize(text, fontSize);
@@ -89,11 +94,42 @@ export async function renderSertifikatPDF(
   }
 
   const jenisLabel = data.jenis === "uang" ? "Uang" : "Barang";
-  drawField(data.namaDonatur.toUpperCase(), layoutField.namaDonatur);
-  drawField(`${data.namaProgram} berupa ${jenisLabel}`, layoutField.deskripsiWakaf);
-  drawField(data.jumlahTerbilang, layoutField.jumlahTerbilang);
-  drawField(`No: ${data.noSertifikat}`, layoutField.noSertifikat);
-  drawField(formatTanggalIndo(data.tanggalTerbit), layoutField.tanggalTerbit);
+
+  if (layoutField.namaDonatur && data.namaDonatur) {
+    drawField(data.namaDonatur.toUpperCase(), layoutField.namaDonatur);
+  }
+
+  const alamatField = layoutField.alamatDonatur || layoutField.alamat;
+  const alamatVal = data.alamatDonatur || data.alamat;
+  if (alamatField && alamatVal) {
+    drawField(alamatVal, alamatField);
+  }
+
+  const programField = layoutField.namaProgram || layoutField.program;
+  const programVal = data.namaProgram || data.program;
+  if (programField && programVal) {
+    drawField(programVal, programField);
+  }
+
+  if (layoutField.nominalAngka && data.nominalAngka) {
+    drawField(data.nominalAngka, layoutField.nominalAngka);
+  }
+
+  if (layoutField.deskripsiWakaf) {
+    drawField(`${data.namaProgram} berupa ${jenisLabel}`, layoutField.deskripsiWakaf);
+  }
+
+  if (layoutField.jumlahTerbilang && data.jumlahTerbilang) {
+    drawField(data.jumlahTerbilang, layoutField.jumlahTerbilang);
+  }
+
+  if (layoutField.noSertifikat && data.noSertifikat) {
+    drawField(`No: ${data.noSertifikat}`, layoutField.noSertifikat);
+  }
+
+  if (layoutField.tanggalTerbit && data.tanggalTerbit) {
+    drawField(formatTanggalIndo(data.tanggalTerbit), layoutField.tanggalTerbit);
+  }
 
   return pdfDoc.save();
 }

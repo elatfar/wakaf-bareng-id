@@ -1,11 +1,12 @@
 import type { Donatur } from "./donatur";
-import type { Program } from "./program";
+import type { Program, TipeDana } from "./program";
 
 export interface Transaksi {
   id: number;
   noTransaksi: string;
   donaturId: number;
   programId: number;
+  tipe: TipeDana;
   jenis: "uang" | "barang";
   deskripsiBarang: string | null;
   jumlah: number;
@@ -19,7 +20,7 @@ export interface Transaksi {
 
 export interface TransaksiDetail extends Transaksi {
   donatur: Pick<Donatur, "id" | "nama" | "noHp">;
-  program: Pick<Program, "id" | "namaProgram">;
+  program: Pick<Program, "id" | "namaProgram" | "tipe">;
 }
 
 export interface BuatTransaksiInput {

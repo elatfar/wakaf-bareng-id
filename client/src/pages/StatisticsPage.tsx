@@ -20,21 +20,21 @@ export default function StatisticsPage() {
 
   const { data: trxRes, isLoading: loadingTrx } = useQuery({
     queryKey: ['transaksi'],
-    queryFn: transaksiApi.list,
+    queryFn: () => transaksiApi.list(),
   })
 
   const { data: donaturRes, isLoading: loadingDonatur } = useQuery({
     queryKey: ['donatur'],
-    queryFn: donaturApi.list,
+    queryFn: () => donaturApi.list(),
   })
 
-  const programs = programSummary?.data?.programStats ?? []
-  const totalTarget = programSummary?.data?.totalTarget ?? 0
-  const totalTerkumpul = programSummary?.data?.totalTerkumpul ?? 0
-  const overallProgress = programSummary?.data?.overallProgress ?? 0
+  const programs = (programSummary?.data as any)?.programStats ?? []
+  const totalTarget = (programSummary?.data as any)?.totalTarget ?? 0
+  const totalTerkumpul = (programSummary?.data as any)?.totalTerkumpul ?? 0
+  const overallProgress = (programSummary?.data as any)?.overallProgress ?? 0
 
   const transactions = trxRes?.data ?? []
-  const verifiedTrx = transactions.filter(t => t.status === 'terverifikasi')
+  const verifiedTrx = transactions.filter((t) => t.status === 'terverifikasi')
   const totalVerified = verifiedTrx.reduce((sum, t) => sum + Number(t.jumlah), 0)
 
   const donaturCount = donaturRes?.data?.length ?? 0

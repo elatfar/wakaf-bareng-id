@@ -1,7 +1,10 @@
+export type TipeDana = "wakaf" | "zakat";
+
 export interface Program {
   id: number;
   namaProgram: string;
   deskripsi: string | null;
+  tipe: TipeDana;
   targetDana: number | null;
   aktif: boolean;
   tanggalMulai: string | null;
@@ -13,6 +16,7 @@ export interface Program {
 
 export interface BuatProgramInput {
   namaProgram: string;
+  tipe: TipeDana;
   deskripsi?: string;
   targetDana?: number;
   tanggalMulai?: string;

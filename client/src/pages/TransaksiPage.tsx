@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { transaksiApi, donaturApi, programApi } from '@/lib/api'
-import type { BuatTransaksiInput } from 'shared'
+import type { BuatTransaksiInput, TipeDana } from 'shared'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,9 @@ import {
 } from '@/components/ui/command'
 import { CheckIcon, ChevronsUpDownIcon, UserPlusIcon } from 'lucide-react'
 
+const MAROON = '#2B0F17'
+const GOLD = '#B8863F'
+
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   terverifikasi: 'default',
   pending: 'secondary',
@@ -56,7 +59,7 @@ function todayString() {
   return new Date().toISOString().split('T')[0] as string
 }
 
-const emptyForm = (): BuatTransaksiInput => ({
+const emptyForm = (defaultTipe: TipeDana = 'wakaf'): BuatTransaksiInput & { tipeTransaksi?: TipeDana } => ({
   donaturId: 0,
   programId: 0,
   jenis: 'uang',
@@ -64,6 +67,7 @@ const emptyForm = (): BuatTransaksiInput => ({
   metodePembayaran: '',
   catatan: '',
   tanggal: todayString(),
+  tipeTransaksi: defaultTipe,
 })
 
 // ─── Donatur Combobox with Quick-Create ──────────────────────────────────────
@@ -104,7 +108,7 @@ function DonaturCombobox({ donaturList, value, onChange, onQuickCreate, isCreati
   }
 
   function handleOpenQuickForm() {
-    setQuickNama(search) // pre-fill dengan teks yang sudah diketik
+    setQuickNama(search)
     setShowQuickForm(true)
   }
 
@@ -158,7 +162,6 @@ function DonaturCombobox({ donaturList, value, onChange, onQuickCreate, isCreati
                 ))}
               </CommandGroup>
 
-              {/* Quick Create option — tampil jika ada teks search dan belum exact match */}
               {search.trim() && !exactMatch && (
                 <>
                   <CommandSeparator />
@@ -173,7 +176,6 @@ function DonaturCombobox({ donaturList, value, onChange, onQuickCreate, isCreati
             </CommandList>
           </Command>
         ) : (
-          // Quick Create mini-form
           <div className="p-3 space-y-3">
             <div className="flex items-center gap-2 pb-1 border-b">
               <UserPlusIcon className="size-4 text-primary" />
@@ -232,17 +234,35 @@ function DonaturCombobox({ donaturList, value, onChange, onQuickCreate, isCreati
 export default function TransaksiPage() {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState<BuatTransaksiInput>(emptyForm())
+  const [selectedTipe, setSelectedTipe] = useState<TipeDana>('wakaf')
+  const [tipeTab, setTipeTab] = useState<'semua' | 'wakaf' | 'zakat'>('semua')
+  const [form, setForm] = useState<BuatTransaksiInput & { tipeTransaksi?: TipeDana }>(emptyForm('wakaf'))
   const [formError, setFormError] = useState('')
   const [search, setSearch] = useState('')
 
-  const { data: trxRes, isLoading } = useQuery({ queryKey: ['transaksi'], queryFn: transaksiApi.list })
+  const { data: trxRes, isLoading } = useQuery({
+    queryKey: ['transaksi', { tipe: tipeTab !== 'semua' ? tipeTab : undefined }],
+    queryFn: () => transaksiApi.list({ tipe: tipeTab !== 'semua' ? tipeTab : undefined }),
+  })
+
+  // List all for count badges
+  const { data: allTrxRes } = useQuery({
+    queryKey: ['transaksi', 'all-counts'],
+    queryFn: () => transaksiApi.list(),
+  })
+
   const { data: donaturRes } = useQuery({ queryKey: ['donatur'], queryFn: donaturApi.list })
   const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list({ aktif: true }) })
 
+  const allTrx = allTrxRes?.data ?? []
+  const countSemua = allTrx.length
+  const countWakaf = allTrx.filter(t => (t as any).tipe === 'wakaf' || t.program?.tipe === 'wakaf').length
+  const countZakat = allTrx.filter(t => (t as any).tipe === 'zakat' || t.program?.tipe === 'zakat').length
+
   const trxList = (trxRes?.data ?? []).filter((t) =>
     t.noTransaksi.toLowerCase().includes(search.toLowerCase()) ||
-    (t.donatur?.nama ?? '').toLowerCase().includes(search.toLowerCase())
+    (t.donatur?.nama ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (t.program?.namaProgram ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const createTransaksiMutation = useMutation({
@@ -250,7 +270,9 @@ export default function TransaksiPage() {
     onSuccess: (r) => {
       if (r.success) {
         qc.invalidateQueries({ queryKey: ['transaksi'] })
-        setOpen(false); setForm(emptyForm()); setFormError('')
+        setOpen(false)
+        setForm(emptyForm(selectedTipe))
+        setFormError('')
       } else setFormError(r.message ?? 'Terjadi kesalahan')
     },
   })
@@ -274,37 +296,103 @@ export default function TransaksiPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['transaksi'] }),
   })
 
+  function handleOpenModal(defaultTipe?: TipeDana) {
+    const tipeToSet = defaultTipe ?? (tipeTab !== 'semua' ? tipeTab : 'wakaf')
+    setSelectedTipe(tipeToSet)
+    setForm(emptyForm(tipeToSet))
+    setFormError('')
+    setOpen(true)
+  }
+
+  function handleSwitchTipe(newTipe: TipeDana) {
+    setSelectedTipe(newTipe)
+    setForm((prev) => ({
+      ...prev,
+      programId: 0, // Reset selected program when switching tipe
+      tipeTransaksi: newTipe,
+    }))
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.donaturId) { setFormError('Pilih atau tambah donatur terlebih dahulu'); return }
-    if (!form.programId) { setFormError('Pilih program'); return }
+    if (!form.programId) { setFormError(`Pilih program ${selectedTipe === 'zakat' ? 'zakat' : 'wakaf'}`); return }
     if (!form.jumlah || form.jumlah <= 0) { setFormError('Jumlah harus lebih dari 0'); return }
     if (form.jenis === 'barang' && !form.deskripsiBarang?.trim()) {
-      setFormError('Deskripsi barang wajib diisi'); return
+      setFormError(`Deskripsi barang wajib diisi untuk ${selectedTipe === 'zakat' ? 'zakat' : 'wakaf'} barang`); return
     }
     setFormError('')
-    createTransaksiMutation.mutate(form)
+    const { tipeTransaksi, ...payload } = form
+    createTransaksiMutation.mutate(payload)
   }
 
   const donaturList = donaturRes?.data?.map((d) => ({ id: d.id, nama: d.nama, noHp: d.noHp ?? null })) ?? []
+  
+  // Filter active programs based on selected tipe in dialog
+  const activeProgramsForSelectedTipe = (programRes?.data ?? []).filter((p) => p.tipe === selectedTipe)
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Transaksi Wakaf</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{trxRes?.data?.length ?? 0} transaksi tercatat</p>
+          <h1 className="text-2xl font-bold" style={{ color: MAROON }}>Transaksi Wakaf & Zakat</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{trxRes?.data?.length ?? 0} transaksi ditampilkan</p>
         </div>
-        <Button onClick={() => { setForm(emptyForm()); setOpen(true) }}>+ Catat Transaksi</Button>
+        <Button
+          onClick={() => handleOpenModal()}
+          className="text-white hover:opacity-90 gap-1.5"
+          style={{ backgroundColor: MAROON }}
+        >
+          + Catat Transaksi
+        </Button>
+      </div>
+
+      {/* Tabs Tipe Transaksi */}
+      <div className="flex border-b border-border/80 gap-2">
+        <button
+          type="button"
+          onClick={() => setTipeTab('semua')}
+          className="pb-2.5 px-3 text-sm font-semibold border-b-2 transition-colors"
+          style={{
+            borderColor: tipeTab === 'semua' ? MAROON : 'transparent',
+            color: tipeTab === 'semua' ? MAROON : 'var(--muted-foreground)',
+          }}
+        >
+          Semua Transaksi ({countSemua})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTipeTab('wakaf')}
+          className="pb-2.5 px-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5"
+          style={{
+            borderColor: tipeTab === 'wakaf' ? GOLD : 'transparent',
+            color: tipeTab === 'wakaf' ? MAROON : 'var(--muted-foreground)',
+          }}
+        >
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: GOLD }} />
+          Wakaf ({countWakaf})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTipeTab('zakat')}
+          className="pb-2.5 px-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5"
+          style={{
+            borderColor: tipeTab === 'zakat' ? '#10b981' : 'transparent',
+            color: tipeTab === 'zakat' ? '#047857' : 'var(--muted-foreground)',
+          }}
+        >
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          Zakat ({countZakat})
+        </button>
       </div>
 
       {/* Search */}
       <Input
-        placeholder="🔍  Cari no. transaksi atau nama donatur..."
+        placeholder="🔍  Cari no. transaksi, nama donatur, atau program..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+        className="max-w-md"
       />
 
       {/* Table */}
@@ -316,45 +404,71 @@ export default function TransaksiPage() {
         ) : trxList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <span className="text-5xl mb-3">💳</span>
-            <p className="text-sm text-muted-foreground">Belum ada transaksi tercatat</p>
+            <p className="text-sm text-muted-foreground mb-2">
+              {search ? 'Tidak ada transaksi yang cocok dengan pencarian' : 'Belum ada transaksi tercatat'}
+            </p>
+            <Button
+              size="sm"
+              onClick={() => handleOpenModal(tipeTab !== 'semua' ? tipeTab : undefined)}
+              style={{ backgroundColor: MAROON, color: '#fff' }}
+            >
+              + Catat Transaksi {tipeTab !== 'semua' ? (tipeTab === 'zakat' ? 'Zakat' : 'Wakaf') : ''}
+            </Button>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                {['No. Transaksi', 'Donatur', 'Program', 'Jumlah', 'Jenis', 'Tanggal', 'Status', 'Aksi'].map((h) => (
+                {['No. Transaksi', 'Tipe', 'Donatur', 'Program', 'Jumlah', 'Jenis', 'Tanggal', 'Status', 'Aksi'].map((h) => (
                   <TableHead key={h}>{h}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {trxList.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{t.noTransaksi}</TableCell>
-                  <TableCell className="font-medium">{t.donatur?.nama ?? '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{t.program?.namaProgram ?? '-'}</TableCell>
-                  <TableCell className="font-semibold text-primary">
-                    Rp {Number(t.jumlah).toLocaleString('id-ID')}
-                  </TableCell>
-                  <TableCell className="capitalize text-xs text-muted-foreground">{t.jenis}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{t.tanggal ?? '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_VARIANT[t.status] ?? 'outline'}>{t.status}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {t.status === 'pending' && (
-                      <Button
+              {trxList.map((t) => {
+                const itemTipe = (t as any).tipe ?? t.program?.tipe ?? 'wakaf'
+                const isZakat = itemTipe === 'zakat'
+                return (
+                  <TableRow key={t.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{t.noTransaksi}</TableCell>
+                    <TableCell>
+                      <Badge
                         variant="outline"
-                        size="sm"
-                        disabled={statusMutation.isPending}
-                        onClick={() => statusMutation.mutate({ id: t.id, status: 'terverifikasi' })}
+                        className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
+                        style={{
+                          backgroundColor: isZakat ? 'rgba(16, 185, 129, 0.1)' : 'rgba(184, 134, 63, 0.1)',
+                          borderColor: isZakat ? '#10b981' : GOLD,
+                          color: isZakat ? '#047857' : MAROON,
+                        }}
                       >
-                        Verifikasi
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {isZakat ? 'Zakat' : 'Wakaf'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">{t.donatur?.nama ?? '-'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t.program?.namaProgram ?? '-'}</TableCell>
+                    <TableCell className="font-semibold" style={{ color: isZakat ? '#047857' : MAROON }}>
+                      Rp {Number(t.jumlah).toLocaleString('id-ID')}
+                    </TableCell>
+                    <TableCell className="capitalize text-xs text-muted-foreground">{t.jenis}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t.tanggal ?? '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[t.status] ?? 'outline'}>{t.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {t.status === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={statusMutation.isPending}
+                          onClick={() => statusMutation.mutate({ id: t.id, status: 'terverifikasi' })}
+                        >
+                          Verifikasi
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         )}
@@ -362,18 +476,53 @@ export default function TransaksiPage() {
 
       {/* Dialog Form */}
       <Dialog open={open} onOpenChange={(o) => {
-        if (!o) { setOpen(false); setForm(emptyForm()); setFormError('') }
+        if (!o) { setOpen(false); setForm(emptyForm(selectedTipe)); setFormError('') }
       }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Catat Transaksi Baru</DialogTitle>
+            <DialogTitle>
+              Catat Transaksi Baru ({selectedTipe === 'zakat' ? 'Zakat' : 'Wakaf'})
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+
+            {/* Pilihan Tipe Transaksi: Wakaf vs Zakat */}
+            <div className="space-y-1.5">
+              <Label>Tipe Transaksi <span className="text-destructive">*</span></Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTipe('wakaf')}
+                  className="flex items-center justify-center gap-2 rounded-lg border py-2 text-sm font-semibold transition-all"
+                  style={{
+                    borderColor: selectedTipe === 'wakaf' ? MAROON : 'var(--border)',
+                    backgroundColor: selectedTipe === 'wakaf' ? MAROON : 'transparent',
+                    color: selectedTipe === 'wakaf' ? '#fff' : 'var(--foreground)',
+                  }}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedTipe === 'wakaf' ? '#fff' : GOLD }} />
+                  Wakaf
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTipe('zakat')}
+                  className="flex items-center justify-center gap-2 rounded-lg border py-2 text-sm font-semibold transition-all"
+                  style={{
+                    borderColor: selectedTipe === 'zakat' ? '#047857' : 'var(--border)',
+                    backgroundColor: selectedTipe === 'zakat' ? '#047857' : 'transparent',
+                    color: selectedTipe === 'zakat' ? '#fff' : 'var(--foreground)',
+                  }}
+                >
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  Zakat
+                </button>
+              </div>
+            </div>
 
             {/* Donatur — full width with combobox */}
             <div className="space-y-1.5">
               <Label>
-                Donatur <span className="text-destructive">*</span>
+                Donatur / Muzakki <span className="text-destructive">*</span>
                 {form.donaturId === 0 && (
                   <span className="ml-2 text-xs text-muted-foreground font-normal">
                     — ketik untuk cari atau tambah baru
@@ -389,36 +538,44 @@ export default function TransaksiPage() {
               />
             </div>
 
-            {/* Program */}
+            {/* Program — difilter sesuai tipe yang dipilih */}
             <div className="space-y-1.5">
-              <Label>Program <span className="text-destructive">*</span></Label>
-              <Select
-                value={form.programId ? String(form.programId) : ''}
-                onValueChange={(v) => setForm({ ...form, programId: Number(v) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih program..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {programRes?.data?.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.namaProgram}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>
+                Program {selectedTipe === 'zakat' ? 'Zakat' : 'Wakaf'} <span className="text-destructive">*</span>
+              </Label>
+              {activeProgramsForSelectedTipe.length === 0 ? (
+                <div className="p-3 rounded-lg border border-dashed text-xs text-muted-foreground bg-muted/30">
+                  Belum ada program {selectedTipe === 'zakat' ? 'zakat' : 'wakaf'} aktif. Silakan tambahkan program terlebih dahulu di menu <strong>Program</strong>.
+                </div>
+              ) : (
+                <Select
+                  value={form.programId ? String(form.programId) : ''}
+                  onValueChange={(v) => setForm({ ...form, programId: Number(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Pilih program ${selectedTipe === 'zakat' ? 'zakat (cth. Zakat Fitrah, Zakat Penghasilan)' : 'wakaf'}...`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeProgramsForSelectedTipe.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.namaProgram}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Jenis */}
               <div className="space-y-1.5">
-                <Label>Jenis Wakaf <span className="text-destructive">*</span></Label>
+                <Label>Jenis {selectedTipe === 'zakat' ? 'Zakat' : 'Wakaf'} <span className="text-destructive">*</span></Label>
                 <Select
                   value={form.jenis}
                   onValueChange={(v) => setForm({ ...form, jenis: v as 'uang' | 'barang', deskripsiBarang: undefined })}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="uang">Uang</SelectItem>
-                    <SelectItem value="barang">Barang</SelectItem>
+                    <SelectItem value="uang">Uang (Tunai/Transfer)</SelectItem>
+                    <SelectItem value="barang">{selectedTipe === 'zakat' ? 'Barang / Beras' : 'Barang'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -437,7 +594,7 @@ export default function TransaksiPage() {
 
             {/* Jumlah */}
             <div className="space-y-1.5">
-              <Label>Jumlah (Rp) <span className="text-destructive">*</span></Label>
+              <Label>Nominal {selectedTipe === 'zakat' ? 'Zakat' : 'Wakaf'} (Rp) <span className="text-destructive">*</span></Label>
               <Input
                 type="number"
                 min={1}
@@ -446,18 +603,22 @@ export default function TransaksiPage() {
                 placeholder="500000"
               />
               {form.jumlah > 0 && (
-                <p className="text-xs text-ring italic">≈ Rp {form.jumlah.toLocaleString('id-ID')}</p>
+                <p className="text-xs italic font-medium" style={{ color: selectedTipe === 'zakat' ? '#047857' : GOLD }}>
+                  ≈ Rp {form.jumlah.toLocaleString('id-ID')}
+                </p>
               )}
             </div>
 
             {/* Deskripsi barang — conditional */}
             {form.jenis === 'barang' && (
               <div className="space-y-1.5">
-                <Label>Deskripsi Barang <span className="text-destructive">*</span></Label>
+                <Label>
+                  Deskripsi {selectedTipe === 'zakat' ? 'Barang / Beras Zakat' : 'Barang Wakaf'} <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={form.deskripsiBarang ?? ''}
                   onChange={(e) => setForm({ ...form, deskripsiBarang: e.target.value })}
-                  placeholder="Contoh: Al-Quran 30 juz"
+                  placeholder={selectedTipe === 'zakat' ? 'Contoh: Beras Premium 5 kg' : 'Contoh: Al-Quran 30 juz'}
                 />
               </div>
             )}
@@ -468,7 +629,7 @@ export default function TransaksiPage() {
                 <Input
                   value={form.metodePembayaran ?? ''}
                   onChange={(e) => setForm({ ...form, metodePembayaran: e.target.value })}
-                  placeholder="Transfer, Tunai..."
+                  placeholder="Transfer Bank, QRIS, Tunai..."
                 />
               </div>
               <div className="space-y-1.5">
@@ -476,6 +637,7 @@ export default function TransaksiPage() {
                 <Input
                   value={form.catatan ?? ''}
                   onChange={(e) => setForm({ ...form, catatan: e.target.value })}
+                  placeholder="Opsional..."
                 />
               </div>
             </div>
@@ -485,10 +647,15 @@ export default function TransaksiPage() {
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={createTransaksiMutation.isPending} className="flex-1">
-                {createTransaksiMutation.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
+              <Button
+                type="submit"
+                disabled={createTransaksiMutation.isPending || activeProgramsForSelectedTipe.length === 0}
+                className="flex-1 text-white hover:opacity-90"
+                style={{ backgroundColor: selectedTipe === 'zakat' ? '#047857' : MAROON }}
+              >
+                {createTransaksiMutation.isPending ? 'Menyimpan...' : `Simpan Transaksi ${selectedTipe === 'zakat' ? 'Zakat' : 'Wakaf'}`}
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); setForm(emptyForm()); setFormError('') }}>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); setForm(emptyForm(selectedTipe)); setFormError('') }}>
                 Batal
               </Button>
             </div>

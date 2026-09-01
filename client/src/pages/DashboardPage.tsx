@@ -110,15 +110,21 @@ function QuickActionCard({
 export default function DashboardPage() {
   const navigate = useNavigate()
 
-  const { data: donaturRes, isLoading: l1 } = useQuery({ queryKey: ['donatur'], queryFn: donaturApi.list })
-  const { data: trxRes, isLoading: l2 } = useQuery({ queryKey: ['transaksi'], queryFn: transaksiApi.list })
-  const { data: sertRes, isLoading: l3 } = useQuery({ queryKey: ['sertifikat'], queryFn: sertifikatApi.list })
+  const { data: donaturRes, isLoading: l1 } = useQuery({ queryKey: ['donatur'], queryFn: () => donaturApi.list() })
+  const { data: trxRes, isLoading: l2 } = useQuery({ queryKey: ['transaksi'], queryFn: () => transaksiApi.list() })
+  const { data: sertRes, isLoading: l3 } = useQuery({ queryKey: ['sertifikat'], queryFn: () => sertifikatApi.list() })
   const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list({ aktif: true }) })
   const { data: programSummary } = useQuery({ queryKey: ['program-summary'], queryFn: () => programApi.getSummary() })
 
-  const totalTerkumpul = trxRes?.data
-    ?.filter((t) => t.status === 'terverifikasi')
+  const totalWakafTerkumpul = trxRes?.data
+    ?.filter((t) => t.status === 'terverifikasi' && (t as any).tipe === 'wakaf')
     .reduce((sum, t) => sum + Number(t.jumlah), 0) ?? 0
+
+  const totalZakatTerkumpul = trxRes?.data
+    ?.filter((t) => t.status === 'terverifikasi' && (t as any).tipe === 'zakat')
+    .reduce((sum, t) => sum + Number(t.jumlah), 0) ?? 0
+
+  const totalTerkumpul = totalWakafTerkumpul + totalZakatTerkumpul
 
   const recentTrx = trxRes?.data?.slice(0, 5) ?? []
   const programs = programRes?.data?.filter((p) => p.aktif) ?? []
@@ -178,6 +184,24 @@ export default function DashboardPage() {
           value={`Rp ${totalTerkumpul.toLocaleString('id-ID')}`}
           icon={Coins}
           sub="transaksi terverifikasi"
+          loading={l2}
+        />
+      </div>
+
+      {/* Breakdown Wakaf & Zakat */}
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard
+          label="Wakaf Terkumpul"
+          value={`Rp ${totalWakafTerkumpul.toLocaleString('id-ID')}`}
+          icon={Coins}
+          sub="seluruh transaksi wakaf"
+          loading={l2}
+        />
+        <StatCard
+          label="Zakat Terkumpul"
+          value={`Rp ${totalZakatTerkumpul.toLocaleString('id-ID')}`}
+          icon={Wallet}
+          sub="zakat fitrah, maal, dsb"
           loading={l2}
         />
       </div>

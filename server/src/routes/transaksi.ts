@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
-import { transaksi, donatur, program } from "../db/schema";
+import { transaksi, donatur, program, sertifikat, templateSertifikat } from "../db/schema";
 import { generateNomor } from "../lib/nomor";
 import { angkaKeTerbilang } from "../lib/terbilang";
 import type { ApiResponse, TransaksiDetail, BuatTransaksiInput } from "shared";
@@ -13,11 +13,33 @@ const app = new Hono();
 
 // GET /transaksi — daftar dengan donatur dan program
 app.get("/", async (c) => {
+  const tipeParam = c.req.query("tipe");
+  const statusParam = c.req.query("status");
+  const programIdParam = c.req.query("programId");
   const db = getDb();
+
+  const whereConditions: any = {};
+  if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
+    whereConditions.tipe = tipeParam as "wakaf" | "zakat";
+  }
+
   const rows = await db.query.transaksi.findMany({
+    where: (t, { eq: teq, and: tand }) => {
+      const conds = [];
+      if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
+        conds.push(teq(t.tipe, tipeParam as "wakaf" | "zakat"));
+      }
+      if (statusParam && VALID_STATUS.includes(statusParam as ValidStatus)) {
+        conds.push(teq(t.status, statusParam as ValidStatus));
+      }
+      if (programIdParam && !isNaN(Number(programIdParam))) {
+        conds.push(teq(t.programId, Number(programIdParam)));
+      }
+      return conds.length > 0 ? tand(...conds) : undefined;
+    },
     with: {
       donatur: { columns: { id: true, nama: true, noHp: true } },
-      program: { columns: { id: true, namaProgram: true } },
+      program: { columns: { id: true, namaProgram: true, tipe: true } },
     },
     orderBy: (t, { desc }) => [desc(t.createdAt)],
   });
@@ -39,7 +61,7 @@ app.get("/:id", async (c) => {
     where: eq(transaksi.id, id),
     with: {
       donatur: { columns: { id: true, nama: true, noHp: true } },
-      program: { columns: { id: true, namaProgram: true } },
+      program: { columns: { id: true, namaProgram: true, tipe: true } },
     },
   });
   if (!row) {
@@ -92,8 +114,12 @@ app.post("/", async (c) => {
     return c.json<ApiResponse>({ success: false, message: "Jumlah harus lebih dari 0" }, 400);
   }
 
-  // Req 4.2: generate nomor transaksi unik
-  const noTransaksi = await generateNomor("TRX", db);
+  const isZakat = programRow.tipe === "zakat";
+  const trxPrefix = isZakat ? "TRX-ZKT" : "TRX-WKF";
+  const certPrefix = isZakat ? "CERT-ZKT" : "CERT-WKF";
+
+  // Req 4.2: generate nomor transaksi unik (TRX-WKF/... atau TRX-ZKT/...)
+  const noTransaksi = await generateNomor(trxPrefix, db);
 
   // Req 4.3: konversi jumlah ke terbilang
   const jumlahTerbilang = angkaKeTerbilang(Math.round(body.jumlah));
@@ -106,6 +132,7 @@ app.post("/", async (c) => {
       noTransaksi,
       donaturId: body.donaturId,
       programId: body.programId,
+      tipe: programRow.tipe,
       jenis: body.jenis,
       deskripsiBarang: body.jenis === "barang" ? (body.deskripsiBarang?.trim() ?? null) : null,
       jumlah: String(body.jumlah),
@@ -122,6 +149,27 @@ app.post("/", async (c) => {
     jumlah: Number(row!.jumlah),
     createdAt: row!.createdAt.toISOString(),
   };
+
+  // Auto-create sertifikat record so noSertifikat is immediately available (CERT-WKF/... atau CERT-ZKT/...)
+  // Find active template for this tipe
+  const activeTemplate = await db.query.templateSertifikat.findFirst({
+    where: (t, { eq: teq, and: tand }) => tand(
+      teq(t.aktif, true),
+      teq(t.tipe, programRow.tipe)
+    ),
+  });
+
+  if (activeTemplate) {
+    const noSertifikat = await generateNomor(certPrefix, db);
+    await db.insert(sertifikat).values({
+      transaksiId: row!.id,
+      templateId: activeTemplate.id,
+      noSertifikat,
+      tanggalTerbit: tanggal,
+      filePath: null,
+      status: "terbit",
+    });
+  }
 
   return c.json<ApiResponse<typeof data>>(
     { success: true, message: "Transaksi berhasil dicatat", data },

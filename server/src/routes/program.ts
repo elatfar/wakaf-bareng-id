@@ -7,51 +7,34 @@ import type { ApiResponse, Program, BuatProgramInput, ProgramStats } from "share
 
 const app = new Hono();
 
-// GET /program?aktif=true&kategori=&search=
+// GET /program?aktif=true&kategori=&search=&tipe=
 app.get("/", async (c) => {
   const aktifParam = c.req.query("aktif");
   const kategoriParam = c.req.query("kategori");
   const searchParam = c.req.query("search");
+  const tipeParam = c.req.query("tipe");
   const db = getDb();
 
-  // Simple query without complex chaining
-  let rows;
-  
+  const conditions = [];
   if (searchParam) {
-    // If search is provided, use like filter
-    rows = await db
-      .select()
-      .from(program)
-      .where(like(program.namaProgram, `%${searchParam}%`))
-      .orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
-  } else if (kategoriParam) {
-    // If kategori is provided
-    rows = await db
-      .select()
-      .from(program)
-      .where(eq(program.kategori, kategoriParam))
-      .orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
-  } else if (aktifParam === "true") {
-    // If aktif is true
-    rows = await db
-      .select()
-      .from(program)
-      .where(eq(program.aktif, true))
-      .orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
-  } else if (aktifParam === "false") {
-    // If aktif is false
-    rows = await db
-      .select()
-      .from(program)
-      .where(eq(program.aktif, false))
-      .orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
-  } else {
-    // No filters
-    rows = await db
-      .select()
-      .from(program)
-      .orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
+    conditions.push(like(program.namaProgram, `%${searchParam}%`));
   }
+  if (kategoriParam) {
+    conditions.push(eq(program.kategori, kategoriParam));
+  }
+  if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
+    conditions.push(eq(program.tipe, tipeParam as "wakaf" | "zakat"));
+  }
+  if (aktifParam === "true") {
+    conditions.push(eq(program.aktif, true));
+  } else if (aktifParam === "false") {
+    conditions.push(eq(program.aktif, false));
+  }
+
+  const query = db.select().from(program);
+  const rows = conditions.length > 0
+    ? await query.where(and(...conditions)).orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`)
+    : await query.orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
 
   // Convert numeric to number for JSON response
   const convertedRows = rows.map(row => ({
@@ -183,11 +166,14 @@ app.post("/", requireRole(["superadmin"]), async (c) => {
     return c.json<ApiResponse>({ success: false, message: "Nama program wajib diisi" }, 400);
   }
 
+  const tipeValue = body.tipe === "zakat" ? "zakat" : "wakaf";
+
   const db = getDb();
   const [row] = await db
     .insert(program)
     .values({
       namaProgram: body.namaProgram.trim(),
+      tipe: tipeValue,
       deskripsi: body.deskripsi ?? null,
       targetDana: body.targetDana ? String(body.targetDana) : null,
       tanggalMulai: body.tanggalMulai ?? null,
@@ -207,7 +193,7 @@ app.post("/", requireRole(["superadmin"]), async (c) => {
   return c.json<ApiResponse<Program>>({ success: true, message: "Program berhasil dibuat", data: convertedRow! }, 201);
 });
 
-// PUT /program/:id (superadmin only) — update nama dan deskripsi
+// PUT /program/:id (superadmin only) — update program
 app.put("/:id", requireRole(["superadmin"]), async (c) => {
   const id = Number(c.req.param("id"));
   const body = await c.req.json<Partial<BuatProgramInput>>();
@@ -224,6 +210,7 @@ app.put("/:id", requireRole(["superadmin"]), async (c) => {
 
   const updateData: any = {
     namaProgram: body.namaProgram?.trim() ?? existing.namaProgram,
+    tipe: body.tipe ?? existing.tipe,
     deskripsi: body.deskripsi ?? existing.deskripsi,
     targetDana: body.targetDana !== undefined ? (body.targetDana ? String(body.targetDana) : null) : existing.targetDana,
     tanggalMulai: body.tanggalMulai ?? existing.tanggalMulai,
