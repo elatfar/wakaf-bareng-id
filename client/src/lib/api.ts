@@ -102,18 +102,12 @@ export const transaksiApi = {
 export const sertifikatApi = {
   list: () => request<SertifikatDetail[]>("/sertifikat"),
   get: (id: number) => request<SertifikatDetail>(`/sertifikat/${id}`),
-  generate: (transaksiId: number) =>
-    request<Sertifikat>(`/sertifikat/generate/${transaksiId}`, { method: "POST" }),
   updateStatus: (id: number, status: string, dikirimVia?: string) =>
     request<Sertifikat>(`/sertifikat/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, dikirimVia }) }),
-  downloadUrl: (id: number) => {
-    // For downloads, we use the endpoint without /api prefix for direct browser/WhatsApp access
-    // This endpoint is available at /sertifikat/:id/download (not /api/sertifikat/:id/download)
-    const baseUrl = import.meta.env.DEV 
-      ? ((import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000")
-      : "";
-    return `${baseUrl}/sertifikat/${id}/download`;
-  },
+  // Direct PDF URL by transaksiId — browser navigates to this, triggers download + creates record
+  pdfUrlByTrx: (transaksiId: number) => `${BASE_URL}/sertifikat/by-transaksi/${transaksiId}/pdf`,
+  // Backward compat — download by sertifikat id
+  downloadUrl: (id: number) => `${BASE_URL}/sertifikat/${id}/download`,
 };
 
 // ─── Template ─────────────────────────────────────────────────────────────────

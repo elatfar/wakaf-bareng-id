@@ -1,7 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import * as fs from "fs";
-import * as path from "path";
 import type { TemplateSertifikat, LayoutFieldItem } from "shared";
 
 export interface RenderData {
@@ -36,14 +34,19 @@ export function rightAlignX(textWidth: number, xRight: number): number {
 }
 
 /**
- * Render sertifikat PDF entirely in-memory.
- * Returns raw PDF bytes — nothing is written to disk.
+ * Render sertifikat PDF entirely in-memory using only Web APIs (fetch, no fs/path).
+ * Compatible with Bun, Node.js, and Cloudflare Workers.
+ *
+ * @param data        - Data fields to render onto the certificate
+ * @param template    - Template containing fileBackground URL and layoutField
+ * @param baseUrl     - Base URL used to resolve relative fileBackground paths (e.g. "https://example.com")
+ * @returns           - Raw PDF bytes as Uint8Array
  */
 export async function renderSertifikatPDF(
   data: RenderData,
-  template: TemplateSertifikat
+  template: TemplateSertifikat,
+  baseUrl = ""
 ): Promise<Uint8Array> {
-  const serverRoot = path.resolve(import.meta.dir, "../..");
   const { layoutField } = template;
   const { canvasWidth, canvasHeight } = layoutField;
 
@@ -51,10 +54,23 @@ export async function renderSertifikatPDF(
   pdfDoc.registerFontkit(fontkit);
   const page = pdfDoc.addPage([canvasWidth, canvasHeight]);
 
-  // Background image — read from disk, embedded into PDF bytes
-  const bgPath = path.resolve(serverRoot, template.fileBackground);
-  const bgBytes = fs.readFileSync(bgPath);
-  const bgImage = await pdfDoc.embedPng(bgBytes);
+  // Resolve background URL — supports absolute HTTPS and relative paths
+  const bgUrl = template.fileBackground.startsWith("http")
+    ? template.fileBackground
+    : `${baseUrl}/${template.fileBackground.replace(/^\//, "")}`;
+
+  const bgRes = await fetch(bgUrl);
+  if (!bgRes.ok) {
+    throw new Error(`Gagal mengambil background: ${bgUrl} (${bgRes.status})`);
+  }
+  const bgBytes = new Uint8Array(await bgRes.arrayBuffer());
+
+  // Auto-detect PNG vs JPG based on magic bytes
+  const isPng = bgBytes[0] === 0x89 && bgBytes[1] === 0x50;
+  const bgImage = isPng
+    ? await pdfDoc.embedPng(bgBytes)
+    : await pdfDoc.embedJpg(bgBytes);
+
   page.drawImage(bgImage, { x: 0, y: 0, width: canvasWidth, height: canvasHeight });
 
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -66,13 +82,9 @@ export async function renderSertifikatPDF(
     const textWidth = font.widthOfTextAtSize(text, fontSize);
     const yPdf = canvasHeight - field.y;
     let xDraw: number;
-    if (field.align === "center") {
-      xDraw = centerX(textWidth, field.x);
-    } else if (field.align === "right") {
-      xDraw = rightAlignX(textWidth, field.x);
-    } else {
-      xDraw = field.x;
-    }
+    if (field.align === "center") xDraw = centerX(textWidth, field.x);
+    else if (field.align === "right") xDraw = rightAlignX(textWidth, field.x);
+    else xDraw = field.x;
     page.drawText(text, { x: xDraw, y: yPdf, size: fontSize, font, color: rgb(0.05, 0.05, 0.05) });
   }
 
@@ -83,6 +95,5 @@ export async function renderSertifikatPDF(
   drawField(`No: ${data.noSertifikat}`, layoutField.noSertifikat);
   drawField(formatTanggalIndo(data.tanggalTerbit), layoutField.tanggalTerbit);
 
-  // Return raw bytes — caller streams directly to client
   return pdfDoc.save();
 }

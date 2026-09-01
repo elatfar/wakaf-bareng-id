@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { sertifikat, transaksi, templateSertifikat } from "../db/schema";
-import { requireRole } from "../middleware/role";
 import { generateNomor } from "../lib/nomor";
 import { renderSertifikatPDF } from "../lib/pdf";
 import type { RenderData } from "../lib/pdf";
@@ -13,7 +12,7 @@ const VALID_STATUS_SERTIFIKAT = ["draft", "terbit", "dicetak", "dikirim"] as con
 
 const app = new Hono();
 
-// GET /sertifikat
+// GET /sertifikat — list
 app.get("/", async (c) => {
   const db = getDb();
   const rows = await db.query.sertifikat.findMany({
@@ -39,7 +38,90 @@ app.get("/", async (c) => {
   return c.json<ApiResponse<typeof data>>({ success: true, message: "OK", data });
 });
 
-// GET /sertifikat/:id
+// GET /sertifikat/by-transaksi/:transaksiId/pdf
+// Main download: generate PDF on-the-fly from transaksiId, no prior "generate" step needed.
+// Creates/reuses a sertifikat record for tracking.
+app.get("/by-transaksi/:transaksiId/pdf", async (c) => {
+  const transaksiId = Number(c.req.param("transaksiId"));
+  if (isNaN(transaksiId)) return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
+
+  const db = getDb();
+  const baseUrl = new URL(c.req.url).origin;
+
+  // Fetch transaksi
+  const trx = await db.query.transaksi.findFirst({
+    where: eq(transaksi.id, transaksiId),
+    with: { donatur: true, program: true },
+  });
+
+  if (!trx) return c.json<ApiResponse>({ success: false, message: "Transaksi tidak ditemukan" }, 404);
+  if (trx.status !== "terverifikasi") {
+    return c.json<ApiResponse>({
+      success: false,
+      message: `Transaksi berstatus '${trx.status}'. Hanya transaksi terverifikasi yang bisa dicetak sertifikatnya.`,
+    }, 400);
+  }
+  if (!trx.donatur || !trx.program) {
+    return c.json<ApiResponse>({ success: false, message: "Data donatur/program tidak lengkap" }, 500);
+  }
+
+  // Fetch active template
+  const template = await db.query.templateSertifikat.findFirst({
+    where: eq(templateSertifikat.aktif, true),
+  });
+  if (!template) return c.json<ApiResponse>({ success: false, message: "Template sertifikat belum diatur" }, 400);
+
+  // Upsert sertifikat record — create if not exists, reuse noSertifikat if exists
+  let existingSert = await db.query.sertifikat.findFirst({
+    where: eq(sertifikat.transaksiId, transaksiId),
+  });
+
+  if (!existingSert) {
+    const noSertifikat = await generateNomor("CERT", db);
+    const today = new Date().toISOString().split("T")[0]!;
+    const [newRow] = await db
+      .insert(sertifikat)
+      .values({
+        transaksiId,
+        templateId: template.id,
+        noSertifikat,
+        tanggalTerbit: today,
+        filePath: null,
+        status: "terbit",
+      })
+      .returning();
+    existingSert = newRow!;
+  }
+
+  const renderData: RenderData = {
+    noTransaksi: trx.noTransaksi,
+    noSertifikat: existingSert.noSertifikat,
+    namaDonatur: trx.donatur.nama,
+    namaProgram: trx.program.namaProgram,
+    jenis: trx.jenis,
+    jumlahTerbilang: trx.jumlahTerbilang,
+    tanggalTerbit: existingSert.tanggalTerbit,
+  };
+
+  try {
+    const pdfBytes = await renderSertifikatPDF(renderData, template as TemplateSertifikatType, baseUrl);
+    const filename = `${existingSert.noSertifikat.replace(/\//g, "-")}.pdf`;
+
+    return new Response(pdfBytes, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (err) {
+    console.error("PDF generation error:", err);
+    const message = err instanceof Error ? err.message : "Gagal membuat PDF";
+    return c.json<ApiResponse>({ success: false, message }, 500);
+  }
+});
+
+// GET /sertifikat/:id — detail
 app.get("/:id", async (c) => {
   const id = Number(c.req.param("id"));
   if (isNaN(id)) return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
@@ -59,32 +141,26 @@ app.get("/:id", async (c) => {
 
   if (!row) return c.json<ApiResponse>({ success: false, message: "Sertifikat tidak ditemukan" }, 404);
 
-  const responseData = {
+  return c.json({ success: true, message: "OK", data: {
     ...row,
     createdAt: row.createdAt.toISOString(),
     transaksi: row.transaksi
       ? { ...row.transaksi, jumlah: Number(row.transaksi.jumlah), createdAt: row.transaksi.createdAt.toISOString() }
       : null,
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return c.json<ApiResponse<any>>({ success: true, message: "OK", data: responseData });
+  }});
 });
 
-// GET /sertifikat/:id/download — generate PDF in-memory and stream to browser, no disk I/O
+// GET /sertifikat/:id/download — kept for backward compat with existing sertifikat records
 app.get("/:id/download", async (c) => {
   const id = Number(c.req.param("id"));
   if (isNaN(id)) return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
 
   const db = getDb();
+  const baseUrl = new URL(c.req.url).origin;
 
   const row = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
-    with: {
-      transaksi: {
-        with: { donatur: true, program: true },
-      },
-    },
+    with: { transaksi: { with: { donatur: true, program: true } } },
   });
 
   if (!row) return c.json<ApiResponse>({ success: false, message: "Sertifikat tidak ditemukan" }, 404);
@@ -108,9 +184,8 @@ app.get("/:id/download", async (c) => {
   };
 
   try {
-    const pdfBytes = await renderSertifikatPDF(renderData, template as TemplateSertifikatType);
+    const pdfBytes = await renderSertifikatPDF(renderData, template as TemplateSertifikatType, baseUrl);
     const filename = `${row.noSertifikat.replace(/\//g, "-")}.pdf`;
-
     return new Response(pdfBytes, {
       headers: {
         "Content-Type": "application/pdf",
@@ -119,87 +194,8 @@ app.get("/:id/download", async (c) => {
       },
     });
   } catch (err) {
-    console.error("Error generating PDF for download:", err);
+    console.error("PDF download error:", err);
     const message = err instanceof Error ? err.message : "Gagal membuat PDF";
-    return c.json<ApiResponse>({ success: false, message }, 500);
-  }
-});
-
-// POST /sertifikat/generate/:transaksiId
-app.post("/generate/:transaksiId", requireRole(["admin", "superadmin"]), async (c) => {
-  try {
-    const transaksiId = Number(c.req.param("transaksiId"));
-    if (isNaN(transaksiId)) {
-      return c.json<ApiResponse>({ success: false, message: "ID transaksi tidak valid" }, 400);
-    }
-
-    const db = getDb();
-
-    const trx = await db.query.transaksi.findFirst({
-      where: eq(transaksi.id, transaksiId),
-      with: { donatur: true, program: true },
-    });
-
-    if (!trx) return c.json<ApiResponse>({ success: false, message: "Transaksi tidak ditemukan" }, 400);
-    if (trx.status !== "terverifikasi") {
-      return c.json<ApiResponse>({
-        success: false,
-        message: `Transaksi berstatus '${trx.status}', hanya transaksi 'terverifikasi' yang bisa diterbitkan sertifikatnya`,
-      }, 400);
-    }
-
-    const template = await db.query.templateSertifikat.findFirst({
-      where: eq(templateSertifikat.aktif, true),
-    });
-    if (!template) return c.json<ApiResponse>({ success: false, message: "Template sertifikat belum diatur" }, 400);
-
-    const existing = await db.query.sertifikat.findFirst({
-      where: eq(sertifikat.transaksiId, transaksiId),
-    });
-    if (existing) {
-      return c.json<ApiResponse>({ success: false, message: "Sertifikat untuk transaksi ini sudah pernah diterbitkan" }, 409);
-    }
-
-    const noSertifikat = await generateNomor("CERT", db);
-    const today = new Date().toISOString().split("T")[0]!;
-
-    const renderData: RenderData = {
-      noTransaksi: trx.noTransaksi,
-      noSertifikat,
-      namaDonatur: trx.donatur!.nama,
-      namaProgram: trx.program!.namaProgram,
-      jenis: trx.jenis,
-      jumlahTerbilang: trx.jumlahTerbilang,
-      tanggalTerbit: today,
-    };
-
-    // Validate the template can actually render before committing to DB
-    await renderSertifikatPDF(renderData, template as TemplateSertifikatType);
-
-    // Insert record — filePath is null, PDF is always generated on-demand
-    const [row] = await db
-      .insert(sertifikat)
-      .values({
-        transaksiId,
-        templateId: template.id,
-        noSertifikat,
-        tanggalTerbit: today,
-        filePath: null,
-        status: "terbit",
-      })
-      .returning();
-
-    return c.json<ApiResponse<Sertifikat>>(
-      {
-        success: true,
-        message: "Sertifikat berhasil diterbitkan",
-        data: { ...row!, createdAt: row!.createdAt.toISOString() },
-      },
-      201
-    );
-  } catch (err) {
-    console.error("Error generating sertifikat:", err);
-    const message = err instanceof Error ? err.message : "Terjadi kesalahan internal";
     return c.json<ApiResponse>({ success: false, message }, 500);
   }
 });
@@ -212,10 +208,7 @@ app.patch("/:id/status", async (c) => {
   const body = await c.req.json<{ status?: string; dikirimVia?: string }>();
 
   if (!body.status || !VALID_STATUS_SERTIFIKAT.includes(body.status as (typeof VALID_STATUS_SERTIFIKAT)[number])) {
-    return c.json<ApiResponse>({
-      success: false,
-      message: `Status tidak valid. Gunakan: ${VALID_STATUS_SERTIFIKAT.join(", ")}`,
-    }, 400);
+    return c.json<ApiResponse>({ success: false, message: `Status tidak valid. Gunakan: ${VALID_STATUS_SERTIFIKAT.join(", ")}` }, 400);
   }
   if (body.dikirimVia && !VALID_DIKIRIM_VIA.includes(body.dikirimVia as (typeof VALID_DIKIRIM_VIA)[number])) {
     return c.json<ApiResponse>({ success: false, message: "dikirimVia harus 'whatsapp' atau 'email'" }, 400);
