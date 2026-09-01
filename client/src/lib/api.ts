@@ -122,6 +122,8 @@ export const templateApi = {
   get: (id: number) => request<TemplateSertifikatDetail>(`/template/${id}`),
   create: (body: BuatTemplateInput) =>
     request<TemplateSertifikatDetail>("/template", { method: "POST", body: JSON.stringify(body) }),
+  update: (id: number, body: Partial<BuatTemplateInput>) =>
+    request<TemplateSertifikatDetail>(`/template/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   setAktif: (id: number) =>
     request<TemplateSertifikatDetail>(`/template/${id}/aktif`, { method: "PATCH" }),
 };

@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, FileImage, CheckCircle2, Link, Eye, EyeOff, ChevronDown, ChevronUp,
-  AlignLeft, AlignCenter, AlignRight, Bold, Move,
+  AlignLeft, AlignCenter, AlignRight, Bold, Move, Pencil,
 } from 'lucide-react'
 import { templateApi } from '@/lib/api'
-import type { BuatTemplateInput, LayoutField } from 'shared'
+import type { BuatTemplateInput, LayoutField, TemplateSertifikat } from 'shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -295,6 +295,7 @@ function FieldControlPanel({
 export default function TemplateEditorPage() {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
   const [previewBg, setPreviewBg] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(true)
   const [bgError, setBgError] = useState(false)
@@ -324,6 +325,17 @@ export default function TemplateEditorPage() {
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<BuatTemplateInput> }) =>
+      templateApi.update(id, data),
+    onSuccess: (r) => {
+      if (r.success) {
+        qc.invalidateQueries({ queryKey: ['template'] })
+        closeDialog()
+      } else setFormError(r.message ?? 'Gagal menyimpan')
+    },
+  })
+
   const aktifMutation = useMutation({
     mutationFn: (id: number) => templateApi.setAktif(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['template'] }),
@@ -331,12 +343,28 @@ export default function TemplateEditorPage() {
 
   function closeDialog() {
     setOpen(false)
+    setEditId(null)
     setFormError('')
     setPreviewBg(false)
     setBgError(false)
     setShowAdvanced(true)
     setSelectedField('namaDonatur')
     setForm({ namaTemplate: '', fileBackground: '', layoutField: DEFAULT_LAYOUT })
+  }
+
+  function openEdit(t: TemplateSertifikat) {
+    setEditId(t.id)
+    setForm({
+      namaTemplate: t.namaTemplate,
+      fileBackground: t.fileBackground,
+      layoutField: t.layoutField as LayoutField,
+    })
+    setFormError('')
+    setPreviewBg(false)
+    setBgError(false)
+    setShowAdvanced(true)
+    setSelectedField('namaDonatur')
+    setOpen(true)
   }
 
   function updateField(key: FieldKey, value: LayoutField[FieldKey]) {
@@ -351,7 +379,11 @@ export default function TemplateEditorPage() {
     if (!form.namaTemplate.trim()) { setFormError('Nama template wajib diisi'); return }
     if (!form.fileBackground.trim()) { setFormError('URL/path background wajib diisi'); return }
     setFormError('')
-    createMutation.mutate(form)
+    if (editId !== null) {
+      updateMutation.mutate({ id: editId, data: form })
+    } else {
+      createMutation.mutate(form)
+    }
   }
 
   return (
@@ -470,21 +502,33 @@ export default function TemplateEditorPage() {
                   </p>
                 </div>
 
-                {/* Action */}
-                {!t.aktif && (
+                {/* Actions */}
+                <div className="flex flex-col gap-2 shrink-0">
                   <Button
-                    id={`btn-aktifkan-template-${t.id}`}
                     variant="outline"
                     size="sm"
-                    className="shrink-0 gap-1.5"
-                    disabled={aktifMutation.isPending}
-                    onClick={() => aktifMutation.mutate(t.id)}
+                    className="gap-1.5"
+                    onClick={() => openEdit(t as TemplateSertifikat)}
                     style={{ borderColor: GOLD, color: MAROON }}
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Aktifkan
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
                   </Button>
-                )}
+                  {!t.aktif && (
+                    <Button
+                      id={`btn-aktifkan-template-${t.id}`}
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={aktifMutation.isPending}
+                      onClick={() => aktifMutation.mutate(t.id)}
+                      style={{ borderColor: GOLD, color: MAROON }}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Aktifkan
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -495,7 +539,7 @@ export default function TemplateEditorPage() {
       <Dialog open={open} onOpenChange={(o) => { if (!o) closeDialog() }}>
         <DialogContent className="w-[95vw] sm:max-w-[95vw] lg:max-w-7xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tambah Template Sertifikat</DialogTitle>
+            <DialogTitle>{editId !== null ? 'Edit Template Sertifikat' : 'Tambah Template Sertifikat'}</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-5 pt-1">
@@ -669,11 +713,11 @@ export default function TemplateEditorPage() {
               <Button
                 id="btn-submit-template"
                 type="submit"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
                 className="flex-1 text-white hover:opacity-90"
                 style={{ backgroundColor: MAROON }}
               >
-                {createMutation.isPending ? 'Menyimpan...' : 'Simpan Template'}
+                {(createMutation.isPending || updateMutation.isPending) ? 'Menyimpan...' : editId !== null ? 'Perbarui Template' : 'Simpan Template'}
               </Button>
               <Button type="button" variant="outline" onClick={closeDialog}>Batal</Button>
             </div>

@@ -158,4 +158,56 @@ app.patch("/:id/aktif", requireRole(["superadmin"]), async (c) => {
   });
 });
 
+// PUT /template/:id (superadmin only) — update template yang sudah ada
+app.put("/:id", requireRole(["superadmin"]), async (c) => {
+  const id = Number(c.req.param("id"));
+  if (isNaN(id)) {
+    return c.json<ApiResponse>({ success: false, message: "ID tidak valid" }, 400);
+  }
+
+  const db = getDb();
+  const existing = await db.query.templateSertifikat.findFirst({
+    where: eq(templateSertifikat.id, id),
+  });
+
+  if (!existing) {
+    return c.json<ApiResponse>({ success: false, message: "Template tidak ditemukan" }, 404);
+  }
+
+  const body = await c.req.json<Partial<BuatTemplateInput>>();
+
+  if (body.namaTemplate !== undefined && body.namaTemplate.trim() === "") {
+    return c.json<ApiResponse>({ success: false, message: "Nama template tidak boleh kosong" }, 400);
+  }
+
+  if (body.fileBackground !== undefined && body.fileBackground.trim() === "") {
+    return c.json<ApiResponse>({ success: false, message: "File background tidak boleh kosong" }, 400);
+  }
+
+  if (body.layoutField !== undefined && !validateLayoutField(body.layoutField)) {
+    const missing = getMissingLayoutFields(body.layoutField);
+    return c.json<ApiResponse>({
+      success: false,
+      message: `LayoutField tidak lengkap. Field yang kurang: ${missing.join(", ")}`,
+    }, 400);
+  }
+
+  const updateData: Partial<typeof existing> = {};
+  if (body.namaTemplate !== undefined) updateData.namaTemplate = body.namaTemplate.trim();
+  if (body.fileBackground !== undefined) updateData.fileBackground = body.fileBackground.trim();
+  if (body.layoutField !== undefined) updateData.layoutField = body.layoutField;
+  if (body.penandatangan1Id !== undefined) updateData.penandatangan1Id = body.penandatangan1Id ?? null;
+  if (body.penandatangan2Id !== undefined) updateData.penandatangan2Id = body.penandatangan2Id ?? null;
+
+  const [row] = await db
+    .update(templateSertifikat)
+    .set(updateData)
+    .where(eq(templateSertifikat.id, id))
+    .returning();
+
+  return c.json<ApiResponse<typeof row>>(
+    { success: true, message: "Template berhasil diperbarui", data: row! }
+  );
+});
+
 export default app;
