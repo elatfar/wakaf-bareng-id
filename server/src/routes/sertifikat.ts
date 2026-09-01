@@ -6,6 +6,7 @@ import { sertifikat, transaksi, templateSertifikat } from "../db/schema";
 import { requireRole } from "../middleware/role";
 import { generateNomor } from "../lib/nomor";
 import { renderSertifikatPDF } from "../lib/pdf";
+import type { RenderData } from "../lib/pdf";
 import type { ApiResponse, Sertifikat, TemplateSertifikat as TemplateSertifikatType } from "shared";
 
 const VALID_DIKIRIM_VIA = ["whatsapp", "email"] as const;
@@ -82,7 +83,7 @@ app.get("/:id", async (c) => {
   return c.json<ApiResponse<typeof data>>({ success: true, message: "OK", data });
 });
 
-// GET /sertifikat/:id/download — stream file PDF dengan header Content-Disposition
+// GET /sertifikat/:id/download — regenerate PDF from DB data + template settings
 app.get("/:id/download", async (c) => {
   const id = Number(c.req.param("id"));
   if (isNaN(id)) {
@@ -90,27 +91,66 @@ app.get("/:id/download", async (c) => {
   }
 
   const db = getDb();
+
+  // 1. Fetch sertifikat dengan relasi transaksi → donatur + program
   const row = await db.query.sertifikat.findFirst({
     where: eq(sertifikat.id, id),
+    with: {
+      transaksi: {
+        with: {
+          donatur: true,
+          program: true,
+        },
+      },
+    },
   });
 
   if (!row) {
     return c.json<ApiResponse>({ success: false, message: "Sertifikat tidak ditemukan" }, 404);
   }
 
-  if (!row.filePath || !fs.existsSync(row.filePath)) {
-    return c.json<ApiResponse>({ success: false, message: "File sertifikat tidak ditemukan" }, 404);
+  if (!row.transaksi || !row.transaksi.donatur || !row.transaksi.program) {
+    return c.json<ApiResponse>({ success: false, message: "Data transaksi tidak lengkap" }, 500);
   }
 
-  const fileBytes = fs.readFileSync(row.filePath);
-  const filename = `${row.noSertifikat.replace(/\//g, "-")}.pdf`;
-
-  return new Response(fileBytes, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
+  // 2. Fetch template yang dipakai saat generate (berdasarkan templateId di sertifikat)
+  const template = await db.query.templateSertifikat.findFirst({
+    where: eq(templateSertifikat.id, row.templateId),
   });
+
+  if (!template) {
+    return c.json<ApiResponse>({ success: false, message: "Template sertifikat tidak ditemukan" }, 404);
+  }
+
+  // 3. Build RenderData
+  const renderData: RenderData = {
+    noTransaksi: row.transaksi.noTransaksi,
+    noSertifikat: row.noSertifikat,
+    namaDonatur: row.transaksi.donatur.nama,
+    namaProgram: row.transaksi.program.namaProgram,
+    jenis: row.transaksi.jenis,
+    jumlahTerbilang: row.transaksi.jumlahTerbilang,
+    tanggalTerbit: row.tanggalTerbit,
+  };
+
+  // 4. Regenerate PDF (always fresh — picks up latest template layout)
+  try {
+    const filePath = await renderSertifikatPDF(renderData, template as TemplateSertifikatType);
+    const fileBytes = fs.readFileSync(filePath);
+    const filename = `${row.noSertifikat.replace(/\//g, "-")}.pdf`;
+
+    return new Response(fileBytes, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (err) {
+    console.error("Error regenerating PDF for download:", err);
+    const message = err instanceof Error ? err.message : "Gagal membuat PDF";
+    return c.json<ApiResponse>({ success: false, message }, 500);
+  }
 });
 
 // POST /sertifikat/generate/:transaksiId (admin/superadmin)
