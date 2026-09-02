@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { templateSertifikat } from "../db/schema";
 import { requireRole } from "../middleware/role";
@@ -8,6 +8,7 @@ import type {
   BuatTemplateInput,
   LayoutField,
   TemplateSertifikatDetail,
+  PaginatedData,
 } from "shared";
 
 const REQUIRED_CANVAS_FIELDS = ["canvasWidth", "canvasHeight"] as const;
@@ -54,25 +55,43 @@ function getMissingLayoutFields(lf: unknown): string[] {
 
 const app = new Hono();
 
-// GET /template — return all templates with penandatangan data (JOIN via Drizzle relations)
+// GET /template?page=1&limit=10 — return all templates with penandatangan data (JOIN via Drizzle relations)
 app.get("/", async (c) => {
+  const page = Number(c.req.query("page")) || 1;
+  const limit = Number(c.req.query("limit")) || 10;
   const db = getDb();
+  const offset = (page - 1) * limit;
+
   const templates = await db.query.templateSertifikat.findMany({
     with: {
       penandatangan1: true,
       penandatangan2: true,
     },
+    limit: limit,
+    offset: offset,
   });
 
-  const data = templates.map((t) => ({
+  const countResult = await db.select({ total: count() }).from(templateSertifikat);
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  const data = templates.map((t: any) => ({
     ...t,
     layoutField: t.layoutField as LayoutField,
   }));
 
-  return c.json<ApiResponse<typeof data>>({
+  return c.json<ApiResponse<PaginatedData<TemplateSertifikatDetail>>>({
     success: true,
     message: "OK",
-    data,
+    data: {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
   });
 });
 

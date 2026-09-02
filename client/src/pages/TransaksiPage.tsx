@@ -45,6 +45,7 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { CheckIcon, ChevronsUpDownIcon, UserPlusIcon } from 'lucide-react'
+import Pagination from '@/components/Pagination'
 
 const MAROON = '#2B0F17'
 const GOLD = '#B8863F'
@@ -239,10 +240,12 @@ export default function TransaksiPage() {
   const [form, setForm] = useState<BuatTransaksiInput & { tipeTransaksi?: TipeDana }>(emptyForm('wakaf'))
   const [formError, setFormError] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const limit = 10
 
   const { data: trxRes, isLoading } = useQuery({
-    queryKey: ['transaksi', { tipe: tipeTab !== 'semua' ? tipeTab : undefined }],
-    queryFn: () => transaksiApi.list({ tipe: tipeTab !== 'semua' ? tipeTab : undefined }),
+    queryKey: ['transaksi', { tipe: tipeTab !== 'semua' ? tipeTab : undefined, page, limit }],
+    queryFn: () => transaksiApi.list({ tipe: tipeTab !== 'semua' ? tipeTab : undefined, page, limit }),
   })
 
   // List all for count badges
@@ -251,19 +254,20 @@ export default function TransaksiPage() {
     queryFn: () => transaksiApi.list(),
   })
 
-  const { data: donaturRes } = useQuery({ queryKey: ['donatur'], queryFn: donaturApi.list })
+  const { data: donaturRes } = useQuery({ queryKey: ['donatur'], queryFn: () => donaturApi.list() })
   const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list({ aktif: true }) })
 
-  const allTrx = allTrxRes?.data ?? []
+  const allTrx = allTrxRes?.data?.data ?? []
   const countSemua = allTrx.length
   const countWakaf = allTrx.filter(t => (t as any).tipe === 'wakaf' || t.program?.tipe === 'wakaf').length
   const countZakat = allTrx.filter(t => (t as any).tipe === 'zakat' || t.program?.tipe === 'zakat').length
 
-  const trxList = (trxRes?.data ?? []).filter((t) =>
+  const trxList = (trxRes?.data?.data ?? []).filter((t) =>
     t.noTransaksi.toLowerCase().includes(search.toLowerCase()) ||
     (t.donatur?.nama ?? '').toLowerCase().includes(search.toLowerCase()) ||
     (t.program?.namaProgram ?? '').toLowerCase().includes(search.toLowerCase())
   )
+  const pagination = trxRes?.data?.pagination
 
   const createTransaksiMutation = useMutation({
     mutationFn: transaksiApi.create,
@@ -326,10 +330,10 @@ export default function TransaksiPage() {
     createTransaksiMutation.mutate(payload)
   }
 
-  const donaturList = donaturRes?.data?.map((d) => ({ id: d.id, nama: d.nama, noHp: d.noHp ?? null })) ?? []
+  const donaturList = donaturRes?.data?.data?.map((d) => ({ id: d.id, nama: d.nama, noHp: d.noHp ?? null })) ?? []
   
   // Filter active programs based on selected tipe in dialog
-  const activeProgramsForSelectedTipe = (programRes?.data ?? []).filter((p) => p.tipe === selectedTipe)
+  const activeProgramsForSelectedTipe = (programRes?.data?.data ?? []).filter((p) => p.tipe === selectedTipe)
 
   return (
     <div className="space-y-6">
@@ -337,7 +341,7 @@ export default function TransaksiPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: MAROON }}>Transaksi Wakaf & Zakat</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{trxRes?.data?.length ?? 0} transaksi ditampilkan</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{trxRes?.data?.data?.length ?? 0} transaksi ditampilkan</p>
         </div>
         <Button
           onClick={() => handleOpenModal()}
@@ -352,7 +356,7 @@ export default function TransaksiPage() {
       <div className="flex border-b border-border/80 gap-2">
         <button
           type="button"
-          onClick={() => setTipeTab('semua')}
+          onClick={() => { setTipeTab('semua'); setPage(1) }}
           className="pb-2.5 px-3 text-sm font-semibold border-b-2 transition-colors"
           style={{
             borderColor: tipeTab === 'semua' ? MAROON : 'transparent',
@@ -363,7 +367,7 @@ export default function TransaksiPage() {
         </button>
         <button
           type="button"
-          onClick={() => setTipeTab('wakaf')}
+          onClick={() => { setTipeTab('wakaf'); setPage(1) }}
           className="pb-2.5 px-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5"
           style={{
             borderColor: tipeTab === 'wakaf' ? GOLD : 'transparent',
@@ -375,7 +379,7 @@ export default function TransaksiPage() {
         </button>
         <button
           type="button"
-          onClick={() => setTipeTab('zakat')}
+          onClick={() => { setTipeTab('zakat'); setPage(1) }}
           className="pb-2.5 px-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5"
           style={{
             borderColor: tipeTab === 'zakat' ? '#10b981' : 'transparent',
@@ -473,6 +477,15 @@ export default function TransaksiPage() {
           </Table>
         )}
       </Card>
+
+      {/* Pagination */}
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
+      )}
 
       {/* Dialog Form */}
       <Dialog open={open} onOpenChange={(o) => {

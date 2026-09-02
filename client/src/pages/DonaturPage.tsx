@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import Pagination from '@/components/Pagination'
 
 const MAROON = '#2B0F17'
 const GOLD = '#B8863F'
@@ -64,14 +65,16 @@ export default function DonaturPage() {
   const [form, setForm] = useState<BuatDonaturInput>(emptyForm)
   const [formError, setFormError] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const limit = 10
 
-  const { data: res, isLoading } = useQuery({ queryKey: ['donatur'], queryFn: donaturApi.list })
+  const { data: res, isLoading } = useQuery({
+    queryKey: ['donatur', page, limit, search],
+    queryFn: () => donaturApi.list({ page, limit, search: search || undefined }),
+  })
 
-  const donaturList = (res?.data ?? []).filter((d) =>
-    d.nama.toLowerCase().includes(search.toLowerCase()) ||
-    (d.noHp ?? '').includes(search) ||
-    (d.email ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const donaturList = res?.data?.data ?? []
+  const pagination = res?.data?.pagination
 
   const createMutation = useMutation({
     mutationFn: donaturApi.create,
@@ -120,7 +123,7 @@ export default function DonaturPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: MAROON }}>Donatur</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{res?.data?.length ?? 0} donatur terdaftar</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{pagination?.total ?? 0} donatur terdaftar</p>
         </div>
         <Button
           onClick={openCreate}
@@ -138,7 +141,7 @@ export default function DonaturPage() {
         <Input
           placeholder="Cari nama, HP, atau email..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="pl-9"
         />
       </div>
@@ -226,6 +229,15 @@ export default function DonaturPage() {
           </Table>
         )}
       </Card>
+
+      {/* Pagination */}
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
+      )}
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={(o) => { if (!o) closeDialog() }}>

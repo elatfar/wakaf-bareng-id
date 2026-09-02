@@ -28,6 +28,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import Pagination from '@/components/Pagination'
 
 const MAROON = '#2B0F17'
 const GOLD = '#B8863F'
@@ -270,14 +271,18 @@ export default function ProgramPage() {
   const [kategoriFilter, setKategoriFilter] = useState<string>('')
   const [aktifFilter, setAktifFilter] = useState<string>('')
   const [tipeTab, setTipeTab] = useState<'semua' | 'wakaf' | 'zakat'>('semua')
+  const [page, setPage] = useState(1)
+  const limit = 10
 
   const { data: res, isLoading } = useQuery({
-    queryKey: ['program', { search: searchQuery, kategori: kategoriFilter, aktif: aktifFilter ? aktifFilter === 'true' : undefined, tipe: tipeTab !== 'semua' ? tipeTab : undefined }],
+    queryKey: ['program', { search: searchQuery, kategori: kategoriFilter, aktif: aktifFilter ? aktifFilter === 'true' : undefined, tipe: tipeTab !== 'semua' ? tipeTab : undefined, page, limit }],
     queryFn: () => programApi.list({ 
       search: searchQuery || undefined, 
       kategori: kategoriFilter || undefined,
       aktif: aktifFilter ? aktifFilter === 'true' : undefined,
       tipe: tipeTab !== 'semua' ? tipeTab : undefined,
+      page,
+      limit,
     }),
   })
 
@@ -292,17 +297,18 @@ export default function ProgramPage() {
     queryFn: () => transaksiApi.list(),
   })
 
-  const allPrograms = allRes?.data ?? []
+  const allPrograms = allRes?.data?.data ?? []
   const countSemua = allPrograms.length
   const countWakaf = allPrograms.filter(p => p.tipe === 'wakaf').length
   const countZakat = allPrograms.filter(p => p.tipe === 'zakat').length
 
-  const programList = res?.data ?? []
+  const programList = res?.data?.data ?? []
+  const pagination = res?.data?.pagination
   const aktifCount = programList.filter((p) => p.aktif).length
   
   // Calculate progress for each program
   const programStats = programList.reduce((acc, program) => {
-    const programTrx = trxRes?.data?.filter(t => t.programId === program.id && t.status === 'terverifikasi') ?? []
+    const programTrx = trxRes?.data?.data?.filter(t => t.programId === program.id && t.status === 'terverifikasi') ?? []
     const totalTerkumpul = programTrx.reduce((sum, t) => sum + Number(t.jumlah), 0)
     const target = program.targetDana ? Number(program.targetDana) : null
     const progress = target && target > 0 ? Math.min(100, (totalTerkumpul / target) * 100) : 0
@@ -463,7 +469,7 @@ export default function ProgramPage() {
             <Input
               placeholder={tipeTab === 'zakat' ? 'Cari program zakat (cth. Fitrah, Penghasilan)...' : 'Cari program...'}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
               className="pl-9"
             />
           </div>
@@ -696,6 +702,15 @@ export default function ProgramPage() {
             />
           ))}
         </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       )}
 
       {/* Dialog Tambah & Edit */}

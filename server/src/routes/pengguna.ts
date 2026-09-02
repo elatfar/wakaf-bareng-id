@@ -1,16 +1,20 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { hash } from "bcryptjs";
 import { getDb } from "../db/client";
 import { pengguna } from "../db/schema";
 import { requireRole } from "../middleware/role";
-import type { ApiResponse, Pengguna, BuatPenggunaInput } from "shared";
+import type { ApiResponse, Pengguna, BuatPenggunaInput, PaginatedData } from "shared";
 
 const app = new Hono();
 
-// GET /pengguna (superadmin only) — exclude passwordHash
+// GET /pengguna?page=1&limit=10 (superadmin only) — exclude passwordHash
 app.get("/", requireRole(["superadmin"]), async (c) => {
+  const page = Number(c.req.query("page")) || 1;
+  const limit = Number(c.req.query("limit")) || 10;
   const db = getDb();
+  const offset = (page - 1) * limit;
+
   const rows = await db
     .select({
       id: pengguna.id,
@@ -18,8 +22,27 @@ app.get("/", requireRole(["superadmin"]), async (c) => {
       email: pengguna.email,
       role: pengguna.role,
     })
-    .from(pengguna);
-  return c.json<ApiResponse<Pengguna[]>>({ success: true, message: "OK", data: rows });
+    .from(pengguna)
+    .limit(limit)
+    .offset(offset);
+
+  const countResult = await db.select({ total: count() }).from(pengguna);
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  return c.json<ApiResponse<PaginatedData<Pengguna>>>({
+    success: true,
+    message: "OK",
+    data: {
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
+  });
 });
 
 // POST /pengguna (superadmin only)

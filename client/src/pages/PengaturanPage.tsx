@@ -134,8 +134,8 @@ function PenggunaTab() {
   const [form, setForm] = useState<BuatPenggunaInput>({ nama: '', email: '', password: '', role: 'admin' })
   const [formError, setFormError] = useState('')
 
-  const { data: res } = useQuery({ queryKey: ['pengguna'], queryFn: penggunaApi.list })
-  const list = res?.data ?? []
+  const { data: res } = useQuery({ queryKey: ['pengguna'], queryFn: () => penggunaApi.list() })
+  const list = res?.data?.data ?? []
 
   const createMutation = useMutation({
     mutationFn: penggunaApi.create,

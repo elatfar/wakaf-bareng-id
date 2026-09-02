@@ -33,11 +33,11 @@ export default function StatisticsPage() {
   const totalTerkumpul = (programSummary?.data as any)?.totalTerkumpul ?? 0
   const overallProgress = (programSummary?.data as any)?.overallProgress ?? 0
 
-  const transactions = trxRes?.data ?? []
+  const transactions = trxRes?.data?.data ?? []
   const verifiedTrx = transactions.filter((t) => t.status === 'terverifikasi')
   const totalVerified = verifiedTrx.reduce((sum, t) => sum + Number(t.jumlah), 0)
 
-  const donaturCount = donaturRes?.data?.length ?? 0
+  const donaturCount = donaturRes?.data?.data?.length ?? 0
 
   // Calculate distribution by category
   const categoryDistribution = programs.reduce((acc: Record<string, { count: number; total: number }>, p: any) => {

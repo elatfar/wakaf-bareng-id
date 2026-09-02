@@ -1,28 +1,27 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, count, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { transaksi, donatur, program, sertifikat, templateSertifikat } from "../db/schema";
 import { generateNomor } from "../lib/nomor";
 import { angkaKeTerbilang } from "../lib/terbilang";
-import type { ApiResponse, TransaksiDetail, BuatTransaksiInput } from "shared";
+import type { ApiResponse, TransaksiDetail, BuatTransaksiInput, PaginatedData } from "shared";
 
 const VALID_STATUS = ["pending", "terverifikasi", "batal"] as const;
 type ValidStatus = (typeof VALID_STATUS)[number];
 
 const app = new Hono();
 
-// GET /transaksi — daftar dengan donatur dan program
+// GET /transaksi?page=1&limit=10&tipe=&status=&programId=
 app.get("/", async (c) => {
   const tipeParam = c.req.query("tipe");
   const statusParam = c.req.query("status");
   const programIdParam = c.req.query("programId");
+  const page = Number(c.req.query("page")) || 1;
+  const limit = Number(c.req.query("limit")) || 10;
   const db = getDb();
+  const offset = (page - 1) * limit;
 
-  const whereConditions: any = {};
-  if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
-    whereConditions.tipe = tipeParam as "wakaf" | "zakat";
-  }
-
+  // Build base query with relational data
   const rows = await db.query.transaksi.findMany({
     where: (t, { eq: teq, and: tand }) => {
       const conds = [];
@@ -42,15 +41,45 @@ app.get("/", async (c) => {
       program: { columns: { id: true, namaProgram: true, tipe: true } },
     },
     orderBy: (t, { desc }) => [desc(t.createdAt)],
+    limit: limit,
+    offset: offset,
   });
 
-  const data: TransaksiDetail[] = rows.map((r) => ({
+  // Get total count with same filters
+  let countQuery = db.select({ total: count() }).from(transaksi) as any;
+  if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
+    countQuery = countQuery.where(eq(transaksi.tipe, tipeParam as "wakaf" | "zakat"));
+  }
+  if (statusParam && VALID_STATUS.includes(statusParam as ValidStatus)) {
+    countQuery = countQuery.where(eq(transaksi.status, statusParam as ValidStatus));
+  }
+  if (programIdParam && !isNaN(Number(programIdParam))) {
+    countQuery = countQuery.where(eq(transaksi.programId, Number(programIdParam)));
+  }
+
+  const countResult = await countQuery;
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  const data: TransaksiDetail[] = rows.map((r: any) => ({
     ...r,
     jumlah: Number(r.jumlah),
     createdAt: r.createdAt.toISOString(),
   }));
 
-  return c.json<ApiResponse<TransaksiDetail[]>>({ success: true, message: "OK", data });
+  return c.json<ApiResponse<PaginatedData<TransaksiDetail>>>({
+    success: true,
+    message: "OK",
+    data: {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
+  });
 });
 
 // GET /transaksi/:id

@@ -116,22 +116,22 @@ export default function DashboardPage() {
   const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list({ aktif: true }) })
   const { data: programSummary } = useQuery({ queryKey: ['program-summary'], queryFn: () => programApi.getSummary() })
 
-  const totalWakafTerkumpul = trxRes?.data
+  const totalWakafTerkumpul = trxRes?.data?.data
     ?.filter((t) => t.status === 'terverifikasi' && (t as any).tipe === 'wakaf')
     .reduce((sum, t) => sum + Number(t.jumlah), 0) ?? 0
 
-  const totalZakatTerkumpul = trxRes?.data
+  const totalZakatTerkumpul = trxRes?.data?.data
     ?.filter((t) => t.status === 'terverifikasi' && (t as any).tipe === 'zakat')
     .reduce((sum, t) => sum + Number(t.jumlah), 0) ?? 0
 
   const totalTerkumpul = totalWakafTerkumpul + totalZakatTerkumpul
 
-  const recentTrx = trxRes?.data?.slice(0, 5) ?? []
-  const programs = programRes?.data?.filter((p) => p.aktif) ?? []
+  const recentTrx = trxRes?.data?.data?.slice(0, 5) ?? []
+  const programs = programRes?.data?.data?.filter((p) => p.aktif) ?? []
   
   // Calculate program progress from transaction data
   const programsWithProgress = programs.map(p => {
-    const programTrx = trxRes?.data?.filter(t => t.programId === p.id && t.status === 'terverifikasi') ?? []
+    const programTrx = trxRes?.data?.data?.filter(t => t.programId === p.id && t.status === 'terverifikasi') ?? []
     const totalProgram = programTrx.reduce((sum, t) => sum + Number(t.jumlah), 0)
     const target = p.targetDana ? Number(p.targetDana) : null
     const progress = target && target > 0 ? Math.min(100, (totalProgram / target) * 100) : 0
@@ -153,7 +153,7 @@ export default function DashboardPage() {
 
   type ProgramStat = { terkumpul: number; trxCount: number; donaturIds: Set<string> }
 
-  const statsPerProgram = (trxRes?.data ?? []).reduce<Record<string, ProgramStat>>((acc, t) => {
+  const statsPerProgram = (trxRes?.data?.data ?? []).reduce<Record<string, ProgramStat>>((acc, t) => {
     if (t.status !== 'terverifikasi') return acc
     const programId = t.program?.id ?? t.programId
     if (programId === undefined || programId === null) return acc
@@ -176,9 +176,9 @@ export default function DashboardPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Donatur" value={donaturRes?.data?.length ?? 0} icon={Users} loading={l1} />
-        <StatCard label="Total Transaksi" value={trxRes?.data?.length ?? 0} icon={Wallet} loading={l2} />
-        <StatCard label="Sertifikat Terbit" value={sertRes?.data?.length ?? 0} icon={ScrollText} loading={l3} />
+        <StatCard label="Total Donatur" value={donaturRes?.data?.data?.length ?? 0} icon={Users} loading={l1} />
+        <StatCard label="Total Transaksi" value={trxRes?.data?.data?.length ?? 0} icon={Wallet} loading={l2} />
+        <StatCard label="Sertifikat Terbit" value={sertRes?.data?.data?.length ?? 0} icon={ScrollText} loading={l3} />
         <StatCard
           label="Total Terkumpul"
           value={`Rp ${totalTerkumpul.toLocaleString('id-ID')}`}

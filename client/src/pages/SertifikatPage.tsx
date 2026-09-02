@@ -8,13 +8,20 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import Pagination from '@/components/Pagination'
 
 const MAROON = '#2B0F17'
 const GOLD = '#B8863F'
 
 export default function SertifikatPage() {
   const [tipeTab, setTipeTab] = useState<'semua' | 'wakaf' | 'zakat'>('semua')
-  const { data: sertRes, isLoading: loadingSert } = useQuery({ queryKey: ['sertifikat'], queryFn: sertifikatApi.list })
+  const [page, setPage] = useState(1)
+  const limit = 10
+
+  const { data: sertRes, isLoading: loadingSert } = useQuery({
+    queryKey: ['sertifikat', page, limit],
+    queryFn: () => sertifikatApi.list({ page, limit }),
+  })
   const { data: trxRes, isLoading: loadingTrx } = useQuery({
     queryKey: ['transaksi', { tipe: tipeTab !== 'semua' ? tipeTab : undefined }],
     queryFn: () => transaksiApi.list({ tipe: tipeTab !== 'semua' ? tipeTab : undefined }),
@@ -26,9 +33,10 @@ export default function SertifikatPage() {
     queryFn: () => transaksiApi.list(),
   })
 
-  const sertifikatList = sertRes?.data ?? []
-  const transaksiList = trxRes?.data ?? []
-  const allTrx = (allTrxRes?.data ?? []).filter((t) => t.status === 'terverifikasi')
+  const sertifikatList = sertRes?.data?.data ?? []
+  const sertPagination = sertRes?.data?.pagination
+  const transaksiList = trxRes?.data?.data ?? []
+  const allTrx = (allTrxRes?.data?.data ?? []).filter((t) => t.status === 'terverifikasi')
 
   const countSemua = allTrx.length
   const countWakaf = allTrx.filter(t => (t as any).tipe === 'wakaf' || t.program?.tipe === 'wakaf').length
@@ -181,6 +189,15 @@ export default function SertifikatPage() {
           </Table>
         )}
       </Card>
+
+      {/* Pagination */}
+      {sertPagination && (
+        <Pagination
+          currentPage={sertPagination.page}
+          totalPages={sertPagination.totalPages}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   )
 }

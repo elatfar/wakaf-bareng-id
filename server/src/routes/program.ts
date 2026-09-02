@@ -1,19 +1,22 @@
 import { Hono } from "hono";
-import { eq, and, sql, like } from "drizzle-orm";
+import { eq, and, sql, like, count } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { program, transaksi } from "../db/schema";
 import { requireRole } from "../middleware/role";
-import type { ApiResponse, Program, BuatProgramInput, ProgramStats } from "shared";
+import type { ApiResponse, Program, BuatProgramInput, ProgramStats, PaginatedData } from "shared";
 
 const app = new Hono();
 
-// GET /program?aktif=true&kategori=&search=&tipe=
+// GET /program?aktif=true&kategori=&search=&tipe=&page=1&limit=10
 app.get("/", async (c) => {
   const aktifParam = c.req.query("aktif");
   const kategoriParam = c.req.query("kategori");
   const searchParam = c.req.query("search");
   const tipeParam = c.req.query("tipe");
+  const page = Number(c.req.query("page")) || 1;
+  const limit = Number(c.req.query("limit")) || 10;
   const db = getDb();
+  const offset = (page - 1) * limit;
 
   const conditions = [];
   if (searchParam) {
@@ -31,20 +34,44 @@ app.get("/", async (c) => {
     conditions.push(eq(program.aktif, false));
   }
 
-  const query = db.select().from(program);
-  const rows = conditions.length > 0
-    ? await query.where(and(...conditions)).orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`)
-    : await query.orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`);
+  let query = db.select().from(program) as any;
+  let countQuery = db.select({ total: count() }).from(program) as any;
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+    countQuery = db.select({ total: count() }).from(program).where(and(...conditions)) as any;
+  }
+
+  const rows = await query
+    .orderBy(sql`${program.prioritas} DESC NULLS LAST, ${program.createdAt} DESC`)
+    .limit(limit)
+    .offset(offset);
+
+  const countResult = await countQuery;
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
 
   // Convert numeric to number for JSON response
-  const convertedRows = rows.map(row => ({
+  const convertedRows = rows.map((row: any) => ({
     ...row,
     targetDana: row.targetDana ? Number(row.targetDana) : null,
     prioritas: row.prioritas ?? 0,
     createdAt: row.createdAt ? row.createdAt.toISOString() : null,
   }));
 
-  return c.json<ApiResponse<Program[]>>({ success: true, message: "OK", data: convertedRows });
+  return c.json<ApiResponse<PaginatedData<Program>>>({
+    success: true,
+    message: "OK",
+    data: {
+      data: convertedRows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
+  });
 });
 
 // GET /program/:id

@@ -1,5 +1,6 @@
 import type {
   ApiResponse,
+  PaginatedData,
   Donatur, BuatDonaturInput,
   Program, BuatProgramInput, ProgramStats,
   Pengguna, BuatPenggunaInput, LoginInput, LoginResponse,
@@ -41,7 +42,14 @@ export const auth = {
 
 // ─── Donatur ─────────────────────────────────────────────────────────────────
 export const donaturApi = {
-  list: () => request<Donatur[]>("/donatur"),
+  list: (params?: { page?: number; limit?: number; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.search) queryParams.append("search", params.search);
+    const queryString = queryParams.toString();
+    return request<PaginatedData<Donatur>>(`/donatur${queryString ? `?${queryString}` : ""}`);
+  },
   get: (id: number) => request<Donatur>(`/donatur/${id}`),
   create: (body: BuatDonaturInput) =>
     request<Donatur>("/donatur", { method: "POST", body: JSON.stringify(body) }),
@@ -53,14 +61,16 @@ export const donaturApi = {
 
 // ─── Program ─────────────────────────────────────────────────────────────────
 export const programApi = {
-  list: (params?: { aktif?: boolean; kategori?: string; search?: string; tipe?: string }) => {
+  list: (params?: { page?: number; limit?: number; aktif?: boolean; kategori?: string; search?: string; tipe?: string }) => {
     const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.aktif !== undefined) queryParams.append("aktif", params.aktif.toString());
     if (params?.kategori) queryParams.append("kategori", params.kategori);
     if (params?.search) queryParams.append("search", params.search);
     if (params?.tipe) queryParams.append("tipe", params.tipe);
     const queryString = queryParams.toString();
-    return request<Program[]>(`/program${queryString ? `?${queryString}` : ""}`);
+    return request<PaginatedData<Program>>(`/program${queryString ? `?${queryString}` : ""}`);
   },
   get: (id: number) => request<Program>(`/program/${id}`),
   getStats: (id: number) => request<ProgramStats>(`/program/${id}/statistik`),
@@ -75,7 +85,13 @@ export const programApi = {
 
 // ─── Pengguna ────────────────────────────────────────────────────────────────
 export const penggunaApi = {
-  list: () => request<Pengguna[]>("/pengguna"),
+  list: (params?: { page?: number; limit?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    const queryString = queryParams.toString();
+    return request<PaginatedData<Pengguna>>(`/pengguna${queryString ? `?${queryString}` : ""}`);
+  },
   create: (body: BuatPenggunaInput) =>
     request<Pengguna>("/pengguna", { method: "POST", body: JSON.stringify(body) }),
 };
@@ -91,13 +107,15 @@ export const penandatanganApi = {
 
 // ─── Transaksi ────────────────────────────────────────────────────────────────
 export const transaksiApi = {
-  list: (params?: { tipe?: string; status?: string; programId?: number }) => {
+  list: (params?: { page?: number; limit?: number; tipe?: string; status?: string; programId?: number }) => {
     const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.tipe) queryParams.append("tipe", params.tipe);
     if (params?.status) queryParams.append("status", params.status);
     if (params?.programId) queryParams.append("programId", params.programId.toString());
     const queryString = queryParams.toString();
-    return request<TransaksiDetail[]>(`/transaksi${queryString ? `?${queryString}` : ""}`);
+    return request<PaginatedData<TransaksiDetail>>(`/transaksi${queryString ? `?${queryString}` : ""}`);
   },
   get: (id: number) => request<TransaksiDetail>(`/transaksi/${id}`),
   create: (body: BuatTransaksiInput) =>
@@ -108,7 +126,13 @@ export const transaksiApi = {
 
 // ─── Sertifikat ───────────────────────────────────────────────────────────────
 export const sertifikatApi = {
-  list: () => request<SertifikatDetail[]>("/sertifikat"),
+  list: (params?: { page?: number; limit?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    const queryString = queryParams.toString();
+    return request<PaginatedData<SertifikatDetail>>(`/sertifikat${queryString ? `?${queryString}` : ""}`);
+  },
   get: (id: number) => request<SertifikatDetail>(`/sertifikat/${id}`),
   updateStatus: (id: number, status: string, dikirimVia?: string) =>
     request<Sertifikat>(`/sertifikat/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, dikirimVia }) }),
@@ -120,7 +144,13 @@ export const sertifikatApi = {
 
 // ─── Template ─────────────────────────────────────────────────────────────────
 export const templateApi = {
-  list: () => request<TemplateSertifikatDetail[]>("/template"),
+  list: (params?: { page?: number; limit?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    const queryString = queryParams.toString();
+    return request<PaginatedData<TemplateSertifikatDetail>>(`/template${queryString ? `?${queryString}` : ""}`);
+  },
   get: (id: number) => request<TemplateSertifikatDetail>(`/template/${id}`),
   create: (body: BuatTemplateInput) =>
     request<TemplateSertifikatDetail>("/template", { method: "POST", body: JSON.stringify(body) }),

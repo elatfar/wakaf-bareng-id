@@ -1,17 +1,21 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { sertifikat } from "../db/schema";
-import type { ApiResponse, Sertifikat } from "shared";
+import type { ApiResponse, Sertifikat, PaginatedData } from "shared";
 
 const VALID_DIKIRIM_VIA = ["whatsapp", "email"] as const;
 const VALID_STATUS_SERTIFIKAT = ["draft", "terbit", "dicetak", "dikirim"] as const;
 
 const app = new Hono();
 
-// GET /sertifikat
+// GET /sertifikat?page=1&limit=10
 app.get("/", async (c) => {
+  const page = Number(c.req.query("page")) || 1;
+  const limit = Number(c.req.query("limit")) || 10;
   const db = getDb();
+  const offset = (page - 1) * limit;
+
   const rows = await db.query.sertifikat.findMany({
     with: {
       transaksi: {
@@ -22,9 +26,15 @@ app.get("/", async (c) => {
       },
     },
     orderBy: (s, { desc }) => [desc(s.tanggalTerbit)],
+    limit: limit,
+    offset: offset,
   });
 
-  const data = rows.map((r) => ({
+  const countResult = await db.select({ total: count() }).from(sertifikat);
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  const data = rows.map((r: any) => ({
     ...r,
     createdAt: r.createdAt.toISOString(),
     transaksi: r.transaksi
@@ -32,7 +42,19 @@ app.get("/", async (c) => {
       : null,
   }));
 
-  return c.json<ApiResponse<typeof data>>({ success: true, message: "OK", data });
+  return c.json<ApiResponse<PaginatedData<Sertifikat>>>({
+    success: true,
+    message: "OK",
+    data: {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
+  });
 });
 
 // GET /sertifikat/:id

@@ -1,20 +1,54 @@
 import { Hono } from "hono";
-import { eq, count } from "drizzle-orm";
+import { eq, count, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { donatur, transaksi } from "../db/schema";
-import type { ApiResponse, Donatur } from "shared";
+import type { ApiResponse, Donatur, PaginatedData } from "shared";
 
 const app = new Hono();
 
-// GET /donatur
+// GET /donatur?page=1&limit=10&search=
 app.get("/", async (c) => {
   const db = getDb();
-  const rows = await db.select().from(donatur).orderBy(donatur.id);
-  const data: Donatur[] = rows.map((r) => ({
+  const page = Number(c.req.query("page") || "1");
+  const limit = Number(c.req.query("limit") || "10");
+  const search = c.req.query("search") as string;
+  const offset = (page - 1) * limit;
+
+  let query = db.select().from(donatur) as any;
+  let countQuery = db.select({ total: count() }).from(donatur) as any;
+
+  if (search) {
+    query = query.where(sql`${donatur.nama} ILIKE ${`%${search}%`}`);
+    countQuery = db.select({ total: count() }).from(donatur).where(sql`${donatur.nama} ILIKE ${`%${search}%`}`) as any;
+  }
+
+  const rows = await query
+    .orderBy(donatur.id)
+    .limit(limit)
+    .offset(offset);
+
+  const countResult = await countQuery;
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  const data: Donatur[] = rows.map((r: any) => ({
     ...r,
     createdAt: r.createdAt.toISOString(),
   }));
-  return c.json<ApiResponse<Donatur[]>>({ success: true, message: "OK", data });
+
+  return c.json<ApiResponse<PaginatedData<Donatur>>>({
+    success: true,
+    message: "OK",
+    data: {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    },
+  });
 });
 
 // GET /donatur/:id

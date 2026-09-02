@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import Pagination from '@/components/Pagination'
 
 const MAROON = '#2B0F17'
 const GOLD = '#B8863F'
@@ -349,6 +350,8 @@ export default function TemplateEditorPage() {
   const [showAdvanced, setShowAdvanced] = useState(true)
   const [bgError, setBgError] = useState(false)
   const [selectedField, setSelectedField] = useState<FieldKey | null>('namaDonatur')
+  const [page, setPage] = useState(1)
+  const limit = 10
 
   const [form, setForm] = useState<BuatTemplateInput & { tipe?: string }>({
     namaTemplate: '',
@@ -359,13 +362,21 @@ export default function TemplateEditorPage() {
   const [formError, setFormError] = useState('')
 
   const { data: tmplRes, isLoading } = useQuery({
-    queryKey: ['template'],
-    queryFn: templateApi.list,
+    queryKey: ['template', page, limit],
+    queryFn: () => templateApi.list({ page, limit }),
   })
-  const templates = tmplRes?.data ?? []
-  const activeWakafTemplate = templates.find((t) => t.aktif && (t as any).tipe === 'wakaf')
-  const activeZakatTemplate = templates.find((t) => t.aktif && (t as any).tipe === 'zakat')
-  const activeTemplate = templates.find((t) => t.aktif)
+  const templates = tmplRes?.data?.data ?? []
+  const pagination = tmplRes?.data?.pagination
+
+  // Query all templates for active template check
+  const { data: allTmplRes } = useQuery({
+    queryKey: ['template', 'all'],
+    queryFn: () => templateApi.list(),
+  })
+  const allTemplates = allTmplRes?.data?.data ?? []
+  const activeWakafTemplate = allTemplates.find((t) => t.aktif && (t as any).tipe === 'wakaf')
+  const activeZakatTemplate = allTemplates.find((t) => t.aktif && (t as any).tipe === 'zakat')
+  const activeTemplate = allTemplates.find((t) => t.aktif)
 
   const createMutation = useMutation({
     mutationFn: templateApi.create,
@@ -647,6 +658,15 @@ export default function TemplateEditorPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       )}
 
       {/* Dialog Tambah / Edit */}
