@@ -270,17 +270,15 @@ app.patch("/:id/aktif", requireRole(["superadmin"]), async (c) => {
     return c.json<ApiResponse>({ success: false, message: "Template tidak ditemukan" }, 404);
   }
 
-  await db.transaction(async (tx) => {
-    // Hanya nonaktifkan template dengan tipe yang sama
-    await tx.update(templateSertifikat)
-      .set({ aktif: false })
-      .where(eq(templateSertifikat.tipe, existing.tipe));
-    // Aktifkan yang dipilih
-    await tx
-      .update(templateSertifikat)
-      .set({ aktif: true })
-      .where(eq(templateSertifikat.id, id));
-  });
+  // Hanya nonaktifkan template dengan tipe yang sama
+  await db.update(templateSertifikat)
+    .set({ aktif: false })
+    .where(eq(templateSertifikat.tipe, existing.tipe));
+  // Aktifkan yang dipilih
+  await db
+    .update(templateSertifikat)
+    .set({ aktif: true })
+    .where(eq(templateSertifikat.id, id));
 
   // Optimasi: Gunakan SQL manual dengan regular LEFT JOIN
   const result = await db.execute(sql`

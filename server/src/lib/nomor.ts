@@ -45,31 +45,22 @@ export async function generateNomor(
   const monthStr = String(month).padStart(2, "0");
   const pattern = `${prefix}/${yearStr}/${monthStr}/%`;
 
-  return await db.transaction(async (tx) => {
-    // Acquire a transaction-scoped advisory lock keyed on prefix+month.
-    // The lock is automatically released when the transaction ends.
-    const lockKey = `${prefix}_${yearStr}_${monthStr}`;
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`
-    );
+  // Count existing records for this prefix/month to derive next sequence number.
+  let count = 0;
+  if (prefix.startsWith("TRX")) {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(transaksi)
+      .where(sql`${transaksi.noTransaksi} LIKE ${pattern}`);
+    count = result[0]?.count ?? 0;
+  } else {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(sertifikat)
+      .where(sql`${sertifikat.noSertifikat} LIKE ${pattern}`);
+    count = result[0]?.count ?? 0;
+  }
 
-    // Count existing records for this prefix/month to derive next sequence number.
-    let count = 0;
-    if (prefix.startsWith("TRX")) {
-      const result = await tx
-        .select({ count: sql<number>`COUNT(*)::int` })
-        .from(transaksi)
-        .where(sql`${transaksi.noTransaksi} LIKE ${pattern}`);
-      count = result[0]?.count ?? 0;
-    } else {
-      const result = await tx
-        .select({ count: sql<number>`COUNT(*)::int` })
-        .from(sertifikat)
-        .where(sql`${sertifikat.noSertifikat} LIKE ${pattern}`);
-      count = result[0]?.count ?? 0;
-    }
-
-    const seq = count + 1;
-    return buildNomorString(prefix, year, month, seq);
-  });
+  const seq = count + 1;
+  return buildNomorString(prefix, year, month, seq);
 }
