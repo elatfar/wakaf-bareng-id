@@ -62,7 +62,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@wakaf.id"
+                  placeholder="Masukkan email..."
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -73,6 +73,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  placeholder="Masukkan password..."
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

@@ -243,31 +243,44 @@ export default function TransaksiPage() {
   const [page, setPage] = useState(1)
   const limit = 10
 
+  // Fetch semua transaksi tanpa mempassing tipe ke API agar tidak error/kosong
   const { data: trxRes, isLoading } = useQuery({
-    queryKey: ['transaksi', { tipe: tipeTab !== 'semua' ? tipeTab : undefined, page, limit }],
-    queryFn: () => transaksiApi.list({ tipe: tipeTab !== 'semua' ? tipeTab : undefined, page, limit }),
-  })
-
-  // List all for count badges
-  const { data: allTrxRes } = useQuery({
-    queryKey: ['transaksi', 'all-counts'],
+    queryKey: ['transaksi'],
     queryFn: () => transaksiApi.list(),
   })
 
   const { data: donaturRes } = useQuery({ queryKey: ['donatur'], queryFn: () => donaturApi.list() })
   const { data: programRes } = useQuery({ queryKey: ['program'], queryFn: () => programApi.list({ aktif: true }) })
 
-  const allTrx = allTrxRes?.data?.data ?? []
-  const countSemua = allTrx.length
-  const countWakaf = allTrx.filter(t => (t as any).tipe === 'wakaf' || t.program?.tipe === 'wakaf').length
-  const countZakat = allTrx.filter(t => (t as any).tipe === 'zakat' || t.program?.tipe === 'zakat').length
+  const rawTrxList = trxRes?.data?.data ?? []
 
-  const trxList = (trxRes?.data?.data ?? []).filter((t) =>
-    t.noTransaksi.toLowerCase().includes(search.toLowerCase()) ||
-    (t.donatur?.nama ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (t.program?.namaProgram ?? '').toLowerCase().includes(search.toLowerCase())
-  )
-  const pagination = trxRes?.data?.pagination
+  // Hitung jumlah untuk badge tab
+  const countSemua = rawTrxList.length
+  const countWakaf = rawTrxList.filter(t => ((t as any).tipe ?? t.program?.tipe) === 'wakaf').length
+  const countZakat = rawTrxList.filter(t => ((t as any).tipe ?? t.program?.tipe) === 'zakat').length
+
+  // Filter list berdasarkan tab aktif dan keyword pencarian
+  const filteredAllTrx = rawTrxList.filter((t) => {
+    const itemTipe = (t as any).tipe ?? t.program?.tipe ?? 'wakaf'
+
+    // Filter Berdasarkan Tab
+    if (tipeTab !== 'semua' && itemTipe !== tipeTab) {
+      return false
+    }
+
+    // Filter Berdasarkan Search Keyword
+    const matchSearch =
+      t.noTransaksi.toLowerCase().includes(search.toLowerCase()) ||
+      (t.donatur?.nama ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (t.program?.namaProgram ?? '').toLowerCase().includes(search.toLowerCase())
+
+    return matchSearch
+  })
+
+  // Manual Pagination untuk Frontend Filtering
+  const totalPages = Math.ceil(filteredAllTrx.length / limit) || 1
+  const startIndex = (page - 1) * limit
+  const trxList = filteredAllTrx.slice(startIndex, startIndex + limit)
 
   const createTransaksiMutation = useMutation({
     mutationFn: transaksiApi.create,
@@ -341,7 +354,7 @@ export default function TransaksiPage() {
   }
 
   const donaturList = donaturRes?.data?.data?.map((d) => ({ id: d.id, nama: d.nama, noHp: d.noHp ?? null })) ?? []
-  
+
   // Filter active programs based on selected tipe in dialog
   const activeProgramsForSelectedTipe = (programRes?.data?.data ?? []).filter((p) => p.tipe === selectedTipe)
 
@@ -351,7 +364,7 @@ export default function TransaksiPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: MAROON }}>Transaksi Wakaf & Zakat</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{trxRes?.data?.data?.length ?? 0} transaksi ditampilkan</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{filteredAllTrx.length} transaksi ditampilkan</p>
         </div>
         <Button
           onClick={() => handleOpenModal()}
@@ -403,9 +416,9 @@ export default function TransaksiPage() {
 
       {/* Search */}
       <Input
-        placeholder="🔍  Cari no. transaksi, nama donatur, atau program..."
+        placeholder=" Cari no. transaksi, nama donatur, atau program..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         className="max-w-md"
       />
 
@@ -557,10 +570,10 @@ export default function TransaksiPage() {
       </Card>
 
       {/* Pagination */}
-      {pagination && (
+      {totalPages > 1 && (
         <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
+          currentPage={page}
+          totalPages={totalPages}
           onPageChange={setPage}
         />
       )}

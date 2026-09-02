@@ -119,7 +119,7 @@ function PositionCanvas({
     e.stopPropagation()
     onSelect(key)
     setDraggingKey(key)
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      ; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
   function handleMove(e: React.PointerEvent<HTMLDivElement>, key: FieldKey) {
     if (draggingKey !== key) return
@@ -170,30 +170,74 @@ function PositionCanvas({
         const field = layout[key] as LayoutFieldItem
         if (!field) return null
         const isSelected = key === selected
-        const translate =
-          field.align === 'left' ? '0%, -50%' :
-            field.align === 'right' ? '-100%, -50%' : '-50%, -50%'
+
+        // Menentukan offset horizontal berdasarkan alignment
+        const translateX =
+          field.align === 'left' ? '0%' :
+            field.align === 'right' ? '-100%' : '-50%'
+
         return (
           <div
             key={key}
             onPointerDown={(e) => handleDown(e, key)}
             onPointerMove={(e) => handleMove(e, key)}
             onPointerUp={handleUp}
-            className="absolute cursor-move whitespace-nowrap rounded px-1.5 py-0.5"
+            className="absolute cursor-move"
             style={{
               left: `${(field.x / canvasWidth) * 100}%`,
               top: `${(field.y / canvasHeight) * 100}%`,
-              transform: `translate(${translate})`,
-              fontSize: `clamp(9px, ${(field.size / canvasWidth) * 100}cqw, 400px)`,
-              fontWeight: field.bold ? 700 : 400,
-              textAlign: field.align,
-              color: MAROON,
-              backgroundColor: isSelected ? 'rgba(184,134,63,0.35)' : 'rgba(255,255,255,0.55)',
-              boxShadow: isSelected ? `0 0 0 2px ${GOLD}` : '0 0 0 1px rgba(43,15,23,0.12)',
+              transform: `translate(${translateX}, -100%)`, // -100% Y memastikan koordinat Y berada persis di dasar font (baseline)
               zIndex: isSelected ? 10 : 1,
             }}
           >
-            {FIELD_SAMPLE[key]}
+            {/* Wrapper pembungkus agar styling box tidak menambah offset/padding pada teks */}
+            <div
+              className="relative transition-all"
+              style={{
+                backgroundColor: isSelected ? 'rgba(184,134,63,0.25)' : 'rgba(255,255,255,0.35)',
+                outline: isSelected ? `1.5px dashed ${GOLD}` : '1px solid rgba(43,15,23,0.2)',
+              }}
+            >
+              {/* Teks utama tanpa padding tambahan agar awal tulisan presisi di koordinat X */}
+              <span
+                className="block whitespace-nowrap leading-none"
+                style={{
+                  fontSize: `clamp(9px, ${(field.size / canvasWidth) * 100}cqw, 400px)`,
+                  fontWeight: field.bold ? 700 : 400,
+                  textAlign: field.align,
+                  color: MAROON,
+                }}
+              >
+                {FIELD_SAMPLE[key]}
+              </span>
+
+              {/* Garis merah penanda Baseline (dasar font) saat dipilih */}
+              {isSelected && (
+                <div
+                  className="absolute w-full pointer-events-none"
+                  style={{
+                    bottom: 0,
+                    left: 0,
+                    borderBottom: '1px solid red',
+                  }}
+                />
+              )}
+
+              {/* Titik merah penanda Anchor Point (Titik Koordinat Asli X, Y) */}
+              {isSelected && (
+                <div
+                  className="absolute rounded-full pointer-events-none"
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    backgroundColor: 'red',
+                    bottom: '-3px',
+                    left: field.align === 'left' ? '0px' : field.align === 'right' ? '100%' : '50%',
+                    transform: 'translateX(-50%)',
+                  }}
+                />
+              )}
+            </div>
           </div>
         )
       })}
@@ -525,34 +569,34 @@ export default function TemplateEditorPage() {
           ]
             .filter(Boolean)
             .map((tmpl) => tmpl && (
-            <div
-              key={tmpl.id}
-              className="rounded-xl border-2 p-4 flex items-center gap-4"
-              style={{ borderColor: GOLD, backgroundColor: GOLD_SOFT }}
-            >
-              {tmpl.fileBackground && (
-                <img
-                  src={tmpl.fileBackground}
-                  alt="bg"
-                  className="h-20 w-32 rounded-md object-cover border border-black/10 shrink-0"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: GOLD }} />
-                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: GOLD }}>
-                    Template Aktif
-                  </span>
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {(tmpl as any).tipe ?? 'wakaf'}
-                  </Badge>
+              <div
+                key={tmpl.id}
+                className="rounded-xl border-2 p-4 flex items-center gap-4"
+                style={{ borderColor: GOLD, backgroundColor: GOLD_SOFT }}
+              >
+                {tmpl.fileBackground && (
+                  <img
+                    src={tmpl.fileBackground}
+                    alt="bg"
+                    className="h-20 w-32 rounded-md object-cover border border-black/10 shrink-0"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: GOLD }} />
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: GOLD }}>
+                      Template Aktif
+                    </span>
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {(tmpl as any).tipe ?? 'wakaf'}
+                    </Badge>
+                  </div>
+                  <p className="font-semibold" style={{ color: MAROON }}>{tmpl.namaTemplate}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{tmpl.fileBackground}</p>
                 </div>
-                <p className="font-semibold" style={{ color: MAROON }}>{tmpl.namaTemplate}</p>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{tmpl.fileBackground}</p>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
 
