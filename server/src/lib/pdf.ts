@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, PDFDocument as PDFDocType } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { TemplateSertifikat, LayoutFieldItem } from "shared";
 
@@ -35,6 +35,27 @@ export function centerX(textWidth: number, xCenter: number): number {
 
 export function rightAlignX(textWidth: number, xRight: number): number {
   return xRight - textWidth;
+}
+
+// Optimasi: Cache font instance untuk mengurangi CPU usage
+let cachedPdfDoc: PDFDocType | null = null;
+let cachedFontRegular: any = null;
+let cachedFontBold: any = null;
+
+async function getFonts(pdfDoc: PDFDocType) {
+  if (cachedFontRegular && cachedFontBold && cachedPdfDoc === pdfDoc) {
+    return { fontRegular: cachedFontRegular, fontBold: cachedFontBold };
+  }
+
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Cache fonts for reuse
+  cachedFontRegular = fontRegular;
+  cachedFontBold = fontBold;
+  cachedPdfDoc = pdfDoc;
+
+  return { fontRegular, fontBold };
 }
 
 /**
@@ -87,12 +108,15 @@ export async function renderSertifikatPDF(
   } else {
     // Fetch via HTTP with timeout to prevent worker execution hang
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout (reduced from 10s)
     let bgRes: Response;
     try {
       bgRes = await fetch(bgUrl, { signal: controller.signal });
     } catch (fetchErr: any) {
       clearTimeout(timeout);
+      if (fetchErr.name === 'AbortError') {
+        throw new Error(`Timeout saat mengambil background dari ${bgUrl}. Pastikan URL dapat diakses dengan cepat.`);
+      }
       throw new Error(`Gagal mengambil background dari ${bgUrl}: ${fetchErr?.message || fetchErr}`);
     }
     clearTimeout(timeout);
@@ -104,6 +128,12 @@ export async function renderSertifikatPDF(
     const contentType = (bgRes.headers.get("content-type") || "").toLowerCase();
     if (contentType.includes("text/html")) {
       throw new Error(`Link background (${bgUrl}) mengembalikan halaman HTML, bukan file gambar. Pastikan URL langsung mengarah ke file gambar PNG/JPG.`);
+    }
+
+    // Optimasi: Limit background image size to prevent memory issues
+    const contentLength = bgRes.headers.get("content-length");
+    if (contentLength && Number(contentLength) > 5 * 1024 * 1024) { // 5MB limit
+      throw new Error(`Ukuran background terlalu besar (${(Number(contentLength) / 1024 / 1024).toFixed(2)}MB). Gunakan gambar kurang dari 5MB.`);
     }
 
     bgBytes = new Uint8Array(await bgRes.arrayBuffer());
@@ -136,8 +166,8 @@ export async function renderSertifikatPDF(
 
   page.drawImage(bgImage, { x: 0, y: 0, width: canvasWidth, height: canvasHeight });
 
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  // Optimasi: Gunakan cached fonts untuk mengurangi CPU usage
+  const { fontRegular, fontBold } = await getFonts(pdfDoc);
 
   function drawField(text: string, field: LayoutFieldItem): void {
     if (!text) return;
