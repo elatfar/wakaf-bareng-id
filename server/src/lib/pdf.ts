@@ -58,22 +58,81 @@ export async function renderSertifikatPDF(
   pdfDoc.registerFontkit(fontkit);
   const page = pdfDoc.addPage([canvasWidth, canvasHeight]);
 
-  // Resolve background URL — supports absolute HTTPS and relative paths
-  const bgUrl = template.fileBackground.startsWith("http")
-    ? template.fileBackground
-    : `${baseUrl}/${template.fileBackground.replace(/^\//, "")}`;
-
-  const bgRes = await fetch(bgUrl);
-  if (!bgRes.ok) {
-    throw new Error(`Gagal mengambil background: ${bgUrl} (${bgRes.status})`);
+  if (!template.fileBackground || typeof template.fileBackground !== "string" || !template.fileBackground.trim()) {
+    throw new Error("File background template tidak ditemukan atau kosong");
   }
-  const bgBytes = new Uint8Array(await bgRes.arrayBuffer());
+
+  // Resolve background URL — supports absolute HTTPS / HTTP or relative URL
+  let bgUrl = template.fileBackground.trim();
+  if (!bgUrl.startsWith("http://") && !bgUrl.startsWith("https://") && !bgUrl.startsWith("data:")) {
+    if (!baseUrl) {
+      throw new Error(`URL background '${bgUrl}' tidak valid. Gunakan link gambar http(s) yang lengkap.`);
+    }
+    bgUrl = `${baseUrl.replace(/\/+$/, "")}/${bgUrl.replace(/^\/+/, "")}`;
+  }
+
+  let bgBytes: Uint8Array;
+  if (bgUrl.startsWith("data:")) {
+    // Support base64 data URLs
+    const base64Parts = bgUrl.split(",");
+    const base64Data = base64Parts[1];
+    if (!base64Data) {
+      throw new Error("Data URL background tidak valid");
+    }
+    const binaryStr = atob(base64Data);
+    bgBytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bgBytes[i] = binaryStr.charCodeAt(i);
+    }
+  } else {
+    // Fetch via HTTP with timeout to prevent worker execution hang
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    let bgRes: Response;
+    try {
+      bgRes = await fetch(bgUrl, { signal: controller.signal });
+    } catch (fetchErr: any) {
+      clearTimeout(timeout);
+      throw new Error(`Gagal mengambil background dari ${bgUrl}: ${fetchErr?.message || fetchErr}`);
+    }
+    clearTimeout(timeout);
+
+    if (!bgRes.ok) {
+      throw new Error(`Gagal mengambil background dari link: ${bgUrl} (HTTP ${bgRes.status} ${bgRes.statusText})`);
+    }
+
+    const contentType = (bgRes.headers.get("content-type") || "").toLowerCase();
+    if (contentType.includes("text/html")) {
+      throw new Error(`Link background (${bgUrl}) mengembalikan halaman HTML, bukan file gambar. Pastikan URL langsung mengarah ke file gambar PNG/JPG.`);
+    }
+
+    bgBytes = new Uint8Array(await bgRes.arrayBuffer());
+  }
+
+  if (bgBytes.length === 0) {
+    throw new Error("File background kosong (0 bytes)");
+  }
 
   // Auto-detect PNG vs JPG based on magic bytes
-  const isPng = bgBytes[0] === 0x89 && bgBytes[1] === 0x50;
-  const bgImage = isPng
-    ? await pdfDoc.embedPng(bgBytes)
-    : await pdfDoc.embedJpg(bgBytes);
+  const isPng = bgBytes[0] === 0x89 && bgBytes[1] === 0x50 && bgBytes[2] === 0x4e && bgBytes[3] === 0x47;
+  const isJpg = bgBytes[0] === 0xff && bgBytes[1] === 0xd8;
+
+  let bgImage;
+  if (isPng) {
+    bgImage = await pdfDoc.embedPng(bgBytes);
+  } else if (isJpg) {
+    bgImage = await pdfDoc.embedJpg(bgBytes);
+  } else {
+    try {
+      bgImage = await pdfDoc.embedPng(bgBytes);
+    } catch {
+      try {
+        bgImage = await pdfDoc.embedJpg(bgBytes);
+      } catch {
+        throw new Error("Format gambar background tidak valid. Harap gunakan format PNG atau JPG.");
+      }
+    }
+  }
 
   page.drawImage(bgImage, { x: 0, y: 0, width: canvasWidth, height: canvasHeight });
 

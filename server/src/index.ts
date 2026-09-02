@@ -11,7 +11,7 @@ import sertifikatRoutes from "./routes/sertifikat";
 import templateRoutes from "./routes/template";
 import { authMiddleware } from "./middleware/auth";
 import { getDb } from "./db/client";
-import { transaksi, templateSertifikat } from "./db/schema";
+import { transaksi, templateSertifikat, sertifikat } from "./db/schema";
 import { renderSertifikatPDF } from "./lib/pdf";
 import type { RenderData } from "./lib/pdf";
 import type { TemplateSertifikat as TemplateSertifikatType } from "shared";
@@ -25,6 +25,13 @@ export type Env = {
 // Main app
 export const app = new Hono<{ Bindings: Env }>();
 
+// Global error handler to catch any unhandled exceptions and prevent Worker 1101 crashes
+app.onError((err, c) => {
+  console.error("Worker unhandled error:", err);
+  const message = err instanceof Error ? err.message : "Internal Server Error";
+  return c.json({ success: false, message }, 500);
+});
+
 // CORS - configured for single-origin deployment
 app.use("*", cors({
   origin: "*", // Allow all origins for development, can be restricted in production
@@ -34,7 +41,9 @@ app.use("*", cors({
 // Initialize DB using Cloudflare secret on first request.
 // getDb() is a lazy singleton — subsequent calls return the cached instance.
 app.use("*", async (c, next) => {
-  getDb(c.env?.DATABASE_URL);
+  if (c.env?.DATABASE_URL) {
+    getDb(c.env.DATABASE_URL);
+  }
   await next();
 });
 
@@ -87,22 +96,31 @@ app.get("/api/cetak/:transaksiId", async (c) => {
       }, 400);
     }
 
-    // 3. Derive noSertifikat — no DB write, derive from noTransaksi
-    // TRX/2026/08/00001 → CERT/2026/08/00001
-    const noSertifikat = trx.noTransaksi.replace(/^TRX\//, "CERT/");
+    // 3. Derive noSertifikat from existing sertifikat record or format according to tipe
+    const existingSertifikat = await db.query.sertifikat.findFirst({
+      where: eq(sertifikat.transaksiId, trx.id),
+    });
+    const defaultCertPrefix = trx.tipe === "zakat" ? "CERT-ZKT" : "CERT-WKF";
+    const noSertifikat = existingSertifikat?.noSertifikat
+      ?? trx.noTransaksi
+        .replace(/^TRX-WKF\//, "CERT-WKF/")
+        .replace(/^TRX-ZKT\//, "CERT-ZKT/")
+        .replace(/^TRX\//, `${defaultCertPrefix}/`);
     const tanggalTerbit = trx.tanggal;
 
     const renderData: RenderData = {
       noTransaksi: trx.noTransaksi,
       noSertifikat,
       namaDonatur: trx.donatur.nama,
+      alamatDonatur: trx.donatur.alamat ?? "",
       namaProgram: trx.program.namaProgram,
+      nominalAngka: `Rp ${Number(trx.jumlah).toLocaleString("id-ID")}`,
       jenis: trx.jenis,
       jumlahTerbilang: trx.jumlahTerbilang,
       tanggalTerbit,
     };
 
-    // 4. Fetch background via HTTP + render PDF in memory — zero disk I/O
+    // 4. Fetch background via link + render PDF in memory — zero disk I/O
     const pdfBytes = await renderSertifikatPDF(
       renderData,
       template as TemplateSertifikatType,
