@@ -14,13 +14,15 @@ export interface Transaksi {
   metodePembayaran: string | null;
   tanggal: string;
   status: "pending" | "terverifikasi" | "batal";
+  dicatatOleh?: number | null;
   catatan: string | null;
   createdAt: string;
 }
 
-export interface TransaksiDetail extends Transaksi {
+export interface TransaksiDetail extends Omit<Transaksi, "dicatatOleh"> {
   donatur: Pick<Donatur, "id" | "nama" | "noHp">;
   program: Pick<Program, "id" | "namaProgram" | "tipe">;
+  dicatatOleh?: { id: number; nama: string; email: string; role: string } | null;
 }
 
 export interface BuatTransaksiInput {

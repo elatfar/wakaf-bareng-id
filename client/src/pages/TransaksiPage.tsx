@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { transaksiApi, donaturApi, programApi } from '@/lib/api'
+import { transaksiApi, donaturApi, programApi, sertifikatApi } from '@/lib/api'
 import type { BuatTransaksiInput, TipeDana } from 'shared'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -330,6 +330,16 @@ export default function TransaksiPage() {
     createTransaksiMutation.mutate(payload)
   }
 
+  function handleWhatsApp(noHp: string | null | undefined, transaksiId: number, tipe = 'wakaf') {
+    if (!noHp) return alert('Nomor HP donatur tidak tersedia')
+    const pdfUrl = sertifikatApi.pdfUrlByTrx(transaksiId)
+    const jenisLabel = tipe === 'zakat' ? 'sertifikat zakat' : 'sertifikat wakaf'
+    const pesan = encodeURIComponent(
+      `Assalamu'alaikum, berikut bukti dan ${jenisLabel} Anda.\nUnduh PDF: ${pdfUrl}`
+    )
+    window.open(`https://wa.me/${noHp.replace(/\D/g, '')}?text=${pesan}`, '_blank')
+  }
+
   const donaturList = donaturRes?.data?.data?.map((d) => ({ id: d.id, nama: d.nama, noHp: d.noHp ?? null })) ?? []
   
   // Filter active programs based on selected tipe in dialog
@@ -423,7 +433,7 @@ export default function TransaksiPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                {['No. Transaksi', 'Tipe', 'Donatur', 'Program', 'Jumlah', 'Jenis', 'Tanggal', 'Status', 'Aksi'].map((h) => (
+                {['No. Transaksi', 'Tipe', 'Donatur', 'Program', 'Jumlah', 'Jenis', 'Tanggal', 'Status', 'Petugas / Verifikator', 'Aksi'].map((h) => (
                   <TableHead key={h}>{h}</TableHead>
                 ))}
               </TableRow>
@@ -458,17 +468,85 @@ export default function TransaksiPage() {
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[t.status] ?? 'outline'}>{t.status}</Badge>
                     </TableCell>
-                    <TableCell>
-                      {t.status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={statusMutation.isPending}
-                          onClick={() => statusMutation.mutate({ id: t.id, status: 'terverifikasi' })}
-                        >
-                          Verifikasi
-                        </Button>
+                    <TableCell className="text-xs">
+                      {t.dicatatOleh ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium">{t.dicatatOleh.nama}</span>
+                          <span className="text-[10px] text-muted-foreground capitalize">{t.dicatatOleh.role}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground italic text-[11px]">-</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {t.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="h-7 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                              disabled={statusMutation.isPending}
+                              onClick={() => statusMutation.mutate({ id: t.id, status: 'terverifikasi' })}
+                            >
+                              ✓ Verifikasi
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs px-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                              disabled={statusMutation.isPending}
+                              onClick={() => {
+                                if (confirm('Yakin ingin membatalkan transaksi ini?')) {
+                                  statusMutation.mutate({ id: t.id, status: 'batal' })
+                                }
+                              }}
+                            >
+                              Batalkan
+                            </Button>
+                          </>
+                        )}
+
+                        {t.status === 'terverifikasi' && (
+                          <>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              asChild
+                              className="h-7 text-xs px-2.5"
+                              style={{ backgroundColor: isZakat ? '#047857' : MAROON, color: '#fff' }}
+                            >
+                              <a
+                                href={sertifikatApi.pdfUrlByTrx(t.id)}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                ⬇ Unduh PDF
+                              </a>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={() => handleWhatsApp(t.donatur?.noHp, t.id, itemTipe)}
+                            >
+                              WhatsApp
+                            </Button>
+                          </>
+                        )}
+
+                        {t.status === 'batal' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs px-2"
+                            disabled={statusMutation.isPending}
+                            onClick={() => statusMutation.mutate({ id: t.id, status: 'terverifikasi' })}
+                          >
+                            Verifikasi Ulang
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 )

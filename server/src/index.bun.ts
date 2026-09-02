@@ -41,29 +41,42 @@ app.get("/api/cetak/:transaksiId", async (c) => {
     with: { donatur: true, program: true },
   });
 
-  if (!trx) return c.json({ success: false, message: "Transaksi tidak ditemukan" }, 404);
+  if (!trx)
+    return c.json(
+      { success: false, message: "Transaksi tidak ditemukan" },
+      404,
+    );
   if (trx.status !== "terverifikasi") {
-    return c.json({
-      success: false,
-      message: `Transaksi berstatus '${trx.status}'. Hanya transaksi terverifikasi yang bisa dicetak.`,
-    }, 400);
+    return c.json(
+      {
+        success: false,
+        message: `Transaksi berstatus '${trx.status}'. Hanya transaksi terverifikasi yang bisa dicetak.`,
+      },
+      400,
+    );
   }
   if (!trx.donatur || !trx.program) {
-    return c.json({ success: false, message: "Data donatur/program tidak lengkap" }, 500);
+    return c.json(
+      { success: false, message: "Data donatur/program tidak lengkap" },
+      500,
+    );
   }
 
   // 2. Read active template matching tipe transaksi — read-only
   const template = await db.query.templateSertifikat.findFirst({
     where: and(
       eq(templateSertifikat.aktif, true),
-      eq(templateSertifikat.tipe, trx.tipe)
+      eq(templateSertifikat.tipe, trx.tipe),
     ),
   });
   if (!template) {
-    return c.json({
-      success: false,
-      message: `Template ${trx.tipe} belum diatur. Aktifkan template dengan tipe '${trx.tipe}' terlebih dahulu.`,
-    }, 400);
+    return c.json(
+      {
+        success: false,
+        message: `Template ${trx.tipe} belum diatur. Aktifkan template dengan tipe '${trx.tipe}' terlebih dahulu.`,
+      },
+      400,
+    );
   }
 
   // 3. Derive noSertifikat from existing sertifikat record or format according to tipe
@@ -71,8 +84,9 @@ app.get("/api/cetak/:transaksiId", async (c) => {
     where: eq(sertifikat.transaksiId, trx.id),
   });
   const defaultCertPrefix = trx.tipe === "zakat" ? "CERT-ZKT" : "CERT-WKF";
-  const noSertifikat = existingSertifikat?.noSertifikat
-    ?? trx.noTransaksi
+  const noSertifikat =
+    existingSertifikat?.noSertifikat ??
+    trx.noTransaksi
       .replace(/^TRX-WKF\//, "CERT-WKF/")
       .replace(/^TRX-ZKT\//, "CERT-ZKT/")
       .replace(/^TRX\//, `${defaultCertPrefix}/`);
@@ -84,7 +98,7 @@ app.get("/api/cetak/:transaksiId", async (c) => {
     namaDonatur: trx.donatur.nama,
     alamatDonatur: trx.donatur.alamat ?? "",
     namaProgram: trx.program.namaProgram,
-    nominalAngka: `Rp ${Number(trx.jumlah).toLocaleString("id-ID")}`,
+    nominalAngka: `${Number(trx.jumlah).toLocaleString("id-ID")}`,
     jenis: trx.jenis,
     jumlahTerbilang: trx.jumlahTerbilang,
     tanggalTerbit,
@@ -95,7 +109,7 @@ app.get("/api/cetak/:transaksiId", async (c) => {
     const pdfBytes = await renderSertifikatPDF(
       renderData,
       template as TemplateSertifikatType,
-      baseUrl
+      baseUrl,
     );
     const filename = `${noSertifikat.replace(/\//g, "-")}.pdf`;
 

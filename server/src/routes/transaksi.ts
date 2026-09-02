@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, and } from "drizzle-orm";
 import { getDb } from "../db/client";
-import { transaksi, donatur, program, sertifikat, templateSertifikat } from "../db/schema";
+import { transaksi, donatur, program, sertifikat, templateSertifikat, pengguna } from "../db/schema";
 import { generateNomor } from "../lib/nomor";
 import { angkaKeTerbilang } from "../lib/terbilang";
 import type { ApiResponse, TransaksiDetail, BuatTransaksiInput, PaginatedData } from "shared";
@@ -21,29 +21,65 @@ app.get("/", async (c) => {
   const db = getDb();
   const offset = (page - 1) * limit;
 
-  // Build base query with relational data
-  const rows = await db.query.transaksi.findMany({
-    where: (t, { eq: teq, and: tand }) => {
-      const conds = [];
-      if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
-        conds.push(teq(t.tipe, tipeParam as "wakaf" | "zakat"));
-      }
-      if (statusParam && VALID_STATUS.includes(statusParam as ValidStatus)) {
-        conds.push(teq(t.status, statusParam as ValidStatus));
-      }
-      if (programIdParam && !isNaN(Number(programIdParam))) {
-        conds.push(teq(t.programId, Number(programIdParam)));
-      }
-      return conds.length > 0 ? tand(...conds) : undefined;
-    },
-    with: {
-      donatur: { columns: { id: true, nama: true, noHp: true } },
-      program: { columns: { id: true, namaProgram: true, tipe: true } },
-    },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
-    limit: limit,
-    offset: offset,
-  });
+  // Build WHERE conditions dynamically
+  const whereConditions: string[] = [];
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (tipeParam && ["wakaf", "zakat"].includes(tipeParam)) {
+    whereConditions.push(`t.tipe = $${paramIndex++}`);
+    params.push(tipeParam);
+  }
+  if (statusParam && VALID_STATUS.includes(statusParam as ValidStatus)) {
+    whereConditions.push(`t.status = $${paramIndex++}`);
+    params.push(statusParam);
+  }
+  if (programIdParam && !isNaN(Number(programIdParam))) {
+    whereConditions.push(`t.program_id = $${paramIndex++}`);
+    params.push(Number(programIdParam));
+  }
+
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
+  // Optimasi: Gunakan SQL manual dengan regular JOIN untuk menghindari LATERAL JOIN
+  const query = sql`
+    SELECT
+      t.id,
+      t.no_transaksi,
+      t.donatur_id,
+      t.program_id,
+      t.jenis,
+      t.tipe,
+      t.deskripsi_barang,
+      t.jumlah,
+      t.jumlah_terbilang,
+      t.metode_pembayaran,
+      t.tanggal,
+      t.status,
+      t.dicatat_oleh,
+      t.catatan,
+      t.created_at,
+      d.id as donatur_id,
+      d.nama as donatur_nama,
+      d.no_hp as donatur_no_hp,
+      p.id as program_id,
+      p.nama_program,
+      p.tipe as program_tipe,
+      u.id as dicatat_oleh_id,
+      u.nama as dicatat_oleh_nama,
+      u.email as dicatat_oleh_email,
+      u.role as dicatat_oleh_role
+    FROM transaksi t
+    LEFT JOIN donatur d ON t.donatur_id = d.id
+    LEFT JOIN program p ON t.program_id = p.id
+    LEFT JOIN pengguna u ON t.dicatat_oleh = u.id
+    ${sql.raw(whereClause)}
+    ORDER BY t.created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+
+  const result = await db.execute(query);
+  const rows = result.rows;
 
   // Get total count with same filters
   let countQuery = db.select({ total: count() }).from(transaksi) as any;
@@ -61,10 +97,38 @@ app.get("/", async (c) => {
   const total = countResult[0]?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
 
+  // Transform hasil SQL ke format yang sesuai
   const data: TransaksiDetail[] = rows.map((r: any) => ({
-    ...r,
+    id: r.id,
+    noTransaksi: r.no_transaksi,
+    donaturId: r.donatur_id,
+    programId: r.program_id,
+    jenis: r.jenis,
+    tipe: r.tipe,
+    deskripsiBarang: r.deskripsi_barang,
     jumlah: Number(r.jumlah),
-    createdAt: r.createdAt.toISOString(),
+    jumlahTerbilang: r.jumlah_terbilang,
+    metodePembayaran: r.metode_pembayaran,
+    tanggal: r.tanggal,
+    status: r.status,
+    catatan: r.catatan,
+    createdAt: r.created_at,
+    donatur: {
+      id: r.donatur_id,
+      nama: r.donatur_nama,
+      noHp: r.donatur_no_hp,
+    } as any,
+    program: {
+      id: r.program_id,
+      namaProgram: r.nama_program,
+      tipe: r.program_tipe,
+    } as any,
+    dicatatOleh: r.dicatat_oleh_id ? {
+      id: r.dicatat_oleh_id,
+      nama: r.dicatat_oleh_nama,
+      email: r.dicatat_oleh_email,
+      role: r.dicatat_oleh_role,
+    } : null,
   }));
 
   return c.json<ApiResponse<PaginatedData<TransaksiDetail>>>({
@@ -86,21 +150,80 @@ app.get("/", async (c) => {
 app.get("/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const db = getDb();
-  const row = await db.query.transaksi.findFirst({
-    where: eq(transaksi.id, id),
-    with: {
-      donatur: { columns: { id: true, nama: true, noHp: true } },
-      program: { columns: { id: true, namaProgram: true, tipe: true } },
-    },
-  });
-  if (!row) {
+  // Optimasi: Gunakan SQL manual dengan regular JOIN
+  const result = await db.execute(sql`
+    SELECT
+      t.id,
+      t.no_transaksi,
+      t.donatur_id,
+      t.program_id,
+      t.jenis,
+      t.tipe,
+      t.deskripsi_barang,
+      t.jumlah,
+      t.jumlah_terbilang,
+      t.metode_pembayaran,
+      t.tanggal,
+      t.status,
+      t.dicatat_oleh,
+      t.catatan,
+      t.created_at,
+      d.id as donatur_id,
+      d.nama as donatur_nama,
+      d.no_hp as donatur_no_hp,
+      p.id as program_id,
+      p.nama_program,
+      p.tipe as program_tipe,
+      u.id as dicatat_oleh_id,
+      u.nama as dicatat_oleh_nama,
+      u.email as dicatat_oleh_email,
+      u.role as dicatat_oleh_role
+    FROM transaksi t
+    LEFT JOIN donatur d ON t.donatur_id = d.id
+    LEFT JOIN program p ON t.program_id = p.id
+    LEFT JOIN pengguna u ON t.dicatat_oleh = u.id
+    WHERE t.id = ${id}
+    LIMIT 1
+  `);
+
+  if (!result || result.rows.length === 0) {
     return c.json<ApiResponse>({ success: false, message: "Transaksi tidak ditemukan" }, 404);
   }
+
+  const r = result.rows[0] as any;
   const data: TransaksiDetail = {
-    ...row,
-    jumlah: Number(row.jumlah),
-    createdAt: row.createdAt.toISOString(),
+    id: r.id,
+    noTransaksi: r.no_transaksi,
+    donaturId: r.donatur_id,
+    programId: r.program_id,
+    jenis: r.jenis,
+    tipe: r.tipe,
+    deskripsiBarang: r.deskripsi_barang,
+    jumlah: Number(r.jumlah),
+    jumlahTerbilang: r.jumlah_terbilang,
+    metodePembayaran: r.metode_pembayaran,
+    tanggal: r.tanggal,
+    status: r.status,
+    catatan: r.catatan,
+    createdAt: r.created_at,
+    donatur: {
+      id: r.donatur_id,
+      nama: r.donatur_nama,
+      noHp: r.donatur_no_hp,
+    } as any,
+    program: {
+      id: r.program_id,
+      namaProgram: r.nama_program,
+      tipe: r.program_tipe,
+    } as any,
+    dicatatOleh: r.dicatat_oleh_id ? {
+      id: r.dicatat_oleh_id,
+      nama: r.dicatat_oleh_nama,
+      email: r.dicatat_oleh_email,
+      role: r.dicatat_oleh_role,
+    } : null,
   };
+
   return c.json<ApiResponse<TransaksiDetail>>({ success: true, message: "OK", data });
 });
 
@@ -155,6 +278,7 @@ app.post("/", async (c) => {
 
   const tanggal = body.tanggal ?? new Date().toISOString().substring(0, 10);
 
+  const currentUser = c.get("pengguna");
   const [row] = await db
     .insert(transaksi)
     .values({
@@ -169,6 +293,7 @@ app.post("/", async (c) => {
       metodePembayaran: body.metodePembayaran ?? null,
       tanggal,
       status: "terverifikasi",
+      dicatatOleh: currentUser?.id ?? null,
       catatan: body.catatan ?? null,
     })
     .returning();
@@ -226,9 +351,15 @@ app.patch("/:id/status", async (c) => {
     return c.json<ApiResponse>({ success: false, message: "Transaksi tidak ditemukan" }, 404);
   }
 
+  const currentUser = c.get("pengguna");
+  const updatePayload: Record<string, any> = { status: body.status as ValidStatus };
+  if (currentUser?.id) {
+    updatePayload.dicatatOleh = currentUser.id;
+  }
+
   const [row] = await db
     .update(transaksi)
-    .set({ status: body.status as ValidStatus })
+    .set(updatePayload)
     .where(eq(transaksi.id, id))
     .returning();
 
