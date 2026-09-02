@@ -53,26 +53,26 @@ function StatCard({
 }) {
   return (
     <Card className="border-t-[3px]" style={{ borderTopColor: GOLD }}>
-      <CardContent className="pt-5">
-        <div className="flex items-start gap-4">
+      <CardContent className="p-3.5">
+        <div className="flex items-start gap-3">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
             style={{ backgroundColor: GOLD_SOFT, color: GOLD }}
           >
-            <Icon className="h-5 w-5" strokeWidth={1.75} />
+            <Icon className="h-4 w-4" strokeWidth={1.75} />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-none">
               {label}
             </p>
             {loading ? (
-              <Skeleton className="h-7 w-24 mt-1" />
+              <Skeleton className="h-6 w-20 mt-1" />
             ) : (
-              <p className="text-2xl font-bold mt-0.5" style={{ color: MAROON }}>
+              <p className="text-xl font-bold mt-1 leading-none" style={{ color: MAROON }}>
                 {value}
               </p>
             )}
-            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+            {sub && <p className="text-[10px] text-muted-foreground mt-1 leading-none">{sub}</p>}
           </div>
         </div>
       </CardContent>
@@ -92,15 +92,15 @@ function QuickActionCard({
   return (
     <button
       onClick={onClick}
-      className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-[#B8863F]/50"
+      className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-[#B8863F]/50 hover:bg-muted/40"
     >
       <div
-        className="flex h-9 w-9 items-center justify-center rounded-full"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
         style={{ backgroundColor: GOLD_SOFT, color: GOLD }}
       >
-        <Icon className="h-4 w-4" strokeWidth={1.75} />
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
       </div>
-      <span className="text-center text-xs font-semibold" style={{ color: MAROON }}>
+      <span className="text-xs font-semibold whitespace-nowrap" style={{ color: MAROON }}>
         {label}
       </span>
     </button>
@@ -128,8 +128,7 @@ export default function DashboardPage() {
 
   const recentTrx = trxRes?.data?.data?.slice(0, 5) ?? []
   const programs = programRes?.data?.data?.filter((p) => p.aktif) ?? []
-  
-  // Calculate program progress from transaction data
+
   const programsWithProgress = programs.map(p => {
     const programTrx = trxRes?.data?.data?.filter(t => t.programId === p.id && t.status === 'terverifikasi') ?? []
     const totalProgram = programTrx.reduce((sum, t) => sum + Number(t.jumlah), 0)
@@ -143,10 +142,8 @@ export default function DashboardPage() {
     }
   })
 
-  // Sort by progress (highest first)
   const sortedPrograms = programsWithProgress.sort((a, b) => b.progress - a.progress)
 
-  // Find programs that need attention
   const nearCompletion = sortedPrograms.filter(p => p.progress >= 80 && p.progress < 100)
   const recentlyCompleted = sortedPrograms.filter(p => p.progress >= 100)
   const needsAttention = sortedPrograms.filter(p => p.progress < 30 && p.target !== null)
@@ -166,16 +163,27 @@ export default function DashboardPage() {
   }, {})
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: MAROON }}>
-          Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Ringkasan aktivitas wakaf</p>
+    <div className="space-y-4">
+      {/* Header & Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+        <div>
+          <h1 className="text-xl font-bold leading-none" style={{ color: MAROON }}>
+            Dashboard
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">Ringkasan aktivitas wakaf</p>
+        </div>
+
+        {/* Quick Actions at the top */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+          <QuickActionCard label="Catat Transaksi" icon={Plus} onClick={() => navigate('/transaksi')} />
+          <QuickActionCard label="Tambah Donatur" icon={UserPlus} onClick={() => navigate('/donatur')} />
+          <QuickActionCard label="Sertifikat" icon={ScrollText} onClick={() => navigate('/sertifikat')} />
+          <QuickActionCard label="Pengaturan" icon={Settings} onClick={() => navigate('/pengaturan')} />
+        </div>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total Donatur" value={donaturRes?.data?.data?.length ?? 0} icon={Users} loading={l1} />
         <StatCard label="Total Transaksi" value={trxRes?.data?.data?.length ?? 0} icon={Wallet} loading={l2} />
         <StatCard label="Sertifikat Terbit" value={sertRes?.data?.data?.length ?? 0} icon={ScrollText} loading={l3} />
@@ -189,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Breakdown Wakaf & Zakat */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <StatCard
           label="Wakaf Terkumpul"
           value={`Rp ${totalWakafTerkumpul.toLocaleString('id-ID')}`}
@@ -208,24 +216,24 @@ export default function DashboardPage() {
 
       {/* Program Statistics Summary */}
       {programSummary?.data && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Card className="border-t-[3px]" style={{ borderTopColor: GOLD }}>
-            <CardContent className="pt-5">
-              <div className="flex items-start gap-4">
+            <CardContent className="p-3.5">
+              <div className="flex items-start gap-3">
                 <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
                   style={{ backgroundColor: GOLD_SOFT, color: GOLD }}
                 >
-                  <Target className="h-5 w-5" strokeWidth={1.75} />
+                  <Target className="h-4 w-4" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-none">
                     Total Target Dana
                   </p>
-                  <p className="text-2xl font-bold mt-0.5" style={{ color: MAROON }}>
+                  <p className="text-xl font-bold mt-1 leading-none" style={{ color: MAROON }}>
                     Rp {programSummary.data.totalTarget.toLocaleString('id-ID')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-none">
                     {programSummary.data.totalProgramAktif} program aktif
                   </p>
                 </div>
@@ -234,22 +242,22 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="border-t-[3px]" style={{ borderTopColor: GOLD }}>
-            <CardContent className="pt-5">
-              <div className="flex items-start gap-4">
+            <CardContent className="p-3.5">
+              <div className="flex items-start gap-3">
                 <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
                   style={{ backgroundColor: GOLD_SOFT, color: GOLD }}
                 >
-                  <TrendingUp className="h-5 w-5" strokeWidth={1.75} />
+                  <TrendingUp className="h-4 w-4" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-none">
                     Overall Progress
                   </p>
-                  <p className="text-2xl font-bold mt-0.5" style={{ color: MAROON }}>
+                  <p className="text-xl font-bold mt-1 leading-none" style={{ color: MAROON }}>
                     {programSummary.data.overallProgress.toFixed(1)}%
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-none">
                     dari total target
                   </p>
                 </div>
@@ -258,22 +266,22 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="border-t-[3px]" style={{ borderTopColor: GOLD }}>
-            <CardContent className="pt-5">
-              <div className="flex items-start gap-4">
+            <CardContent className="p-3.5">
+              <div className="flex items-start gap-3">
                 <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
                   style={{ backgroundColor: GOLD_SOFT, color: GOLD }}
                 >
-                  <Coins className="h-5 w-5" strokeWidth={1.75} />
+                  <Coins className="h-4 w-4" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-none">
                     Dana Terkumpul
                   </p>
-                  <p className="text-2xl font-bold mt-0.5" style={{ color: MAROON }}>
+                  <p className="text-xl font-bold mt-1 leading-none" style={{ color: MAROON }}>
                     Rp {programSummary.data.totalTerkumpul.toLocaleString('id-ID')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-none">
                     {((programSummary.data.totalTerkumpul / programSummary.data.totalTarget) * 100).toFixed(1)}% dari target
                   </p>
                 </div>
@@ -285,30 +293,30 @@ export default function DashboardPage() {
 
       {/* Notifications & Alerts */}
       {(nearCompletion.length > 0 || recentlyCompleted.length > 0 || needsAttention.length > 0) && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4" style={{ color: GOLD }} />
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notifikasi</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Bell className="h-3.5 w-3.5" style={{ color: GOLD }} />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Notifikasi</p>
           </div>
-          
+
           {recentlyCompleted.length > 0 && (
             <Card className="border-l-4" style={{ borderLeftColor: '#10b981' }}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-sm text-green-600">Target Tercapai!</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="font-semibold text-xs text-green-600 leading-none">Target Tercapai!</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       {recentlyCompleted.length} program telah mencapai target dana:
                     </p>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-1 mt-1.5">
                       {recentlyCompleted.slice(0, 3).map(p => (
-                        <Badge key={p.id} variant="outline" className="text-xs">
+                        <Badge key={p.id} variant="outline" className="text-[10px] px-1.5 py-0">
                           {p.namaProgram}
                         </Badge>
                       ))}
                       {recentlyCompleted.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           +{recentlyCompleted.length - 3} lainnya
                         </Badge>
                       )}
@@ -321,22 +329,22 @@ export default function DashboardPage() {
 
           {nearCompletion.length > 0 && (
             <Card className="border-l-4" style={{ borderLeftColor: '#f59e0b' }}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-start gap-3">
-                  <TrendingUp className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2.5">
+                  <TrendingUp className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-sm text-amber-600">Hampir Tercapai</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="font-semibold text-xs text-amber-600 leading-none">Hampir Tercapai</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       {nearCompletion.length} program hampir mencapai target:
                     </p>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-1 mt-1.5">
                       {nearCompletion.slice(0, 3).map(p => (
-                        <Badge key={p.id} variant="outline" className="text-xs">
+                        <Badge key={p.id} variant="outline" className="text-[10px] px-1.5 py-0">
                           {p.namaProgram} ({p.progress.toFixed(0)}%)
                         </Badge>
                       ))}
                       {nearCompletion.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           +{nearCompletion.length - 3} lainnya
                         </Badge>
                       )}
@@ -349,22 +357,22 @@ export default function DashboardPage() {
 
           {needsAttention.length > 0 && (
             <Card className="border-l-4" style={{ borderLeftColor: '#ef4444' }}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-start gap-3">
-                  <Target className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2.5">
+                  <Target className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-sm text-red-600">Perlu Perhatian</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="font-semibold text-xs text-red-600 leading-none">Perlu Perhatian</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       {needsAttention.length} program dengan progress rendah:
                     </p>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-1 mt-1.5">
                       {needsAttention.slice(0, 3).map(p => (
-                        <Badge key={p.id} variant="outline" className="text-xs">
+                        <Badge key={p.id} variant="outline" className="text-[10px] px-1.5 py-0">
                           {p.namaProgram} ({p.progress.toFixed(0)}%)
                         </Badge>
                       ))}
                       {needsAttention.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           +{needsAttention.length - 3} lainnya
                         </Badge>
                       )}
@@ -377,30 +385,19 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Aksi Cepat</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <QuickActionCard label="Catat Transaksi" icon={Plus} onClick={() => navigate('/transaksi')} />
-          <QuickActionCard label="Tambah Donatur" icon={UserPlus} onClick={() => navigate('/donatur')} />
-          <QuickActionCard label="Generate Sertifikat" icon={ScrollText} onClick={() => navigate('/sertifikat')} />
-          <QuickActionCard label="Pengaturan" icon={Settings} onClick={() => navigate('/pengaturan')} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Program Aktif */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Program Aktif</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Program Aktif</p>
             {programs.length > 0 && (
-              <span className="text-xs text-muted-foreground">{programs.length} program</span>
+              <span className="text-[11px] text-muted-foreground">{programs.length} program</span>
             )}
           </div>
           {programs.length === 0 ? (
             <Card>
-              <CardContent className="pt-6 pb-6 text-center">
-                <p className="text-sm text-muted-foreground">Belum ada program aktif</p>
+              <CardContent className="p-4 text-center">
+                <p className="text-xs text-muted-foreground">Belum ada program aktif</p>
               </CardContent>
             </Card>
           ) : sortedPrograms.slice(0, 4).map((p) => {
@@ -408,24 +405,24 @@ export default function DashboardPage() {
             const share = totalTerkumpul > 0 ? (stat.terkumpul / totalTerkumpul) * 100 : 0
             const barWidth = stat.terkumpul === 0 ? 0 : Math.max(4, share)
             const targetProgress = p.target && p.target > 0 ? Math.min(100, (stat.terkumpul / p.target) * 100) : 0
-            
+
             return (
               <Card key={p.id} className="transition-shadow hover:shadow-md">
-                <CardContent className="pt-4 pb-4 space-y-3">
+                <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm" style={{ color: MAROON }}>{p.namaProgram}</p>
+                      <p className="font-semibold text-xs truncate" style={{ color: MAROON }}>{p.namaProgram}</p>
                       {p.deskripsi && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.deskripsi}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{p.deskripsi}</p>
                       )}
                     </div>
                     {p.target && (
                       <Badge
                         variant="outline"
-                        className="shrink-0 text-[10px] font-semibold"
-                        style={{ 
+                        className="shrink-0 text-[10px] px-1.5 py-0 font-semibold"
+                        style={{
                           borderColor: targetProgress >= 80 ? '#10b981' : targetProgress >= 50 ? '#f59e0b' : GOLD,
-                          color: targetProgress >= 80 ? '#10b981' : targetProgress >= 50 ? '#f59e0b' : GOLD 
+                          color: targetProgress >= 80 ? '#10b981' : targetProgress >= 50 ? '#f59e0b' : GOLD
                         }}
                       >
                         {targetProgress.toFixed(0)}%
@@ -434,26 +431,26 @@ export default function DashboardPage() {
                   </div>
 
                   <div>
-                    <p className="text-lg font-bold leading-tight" style={{ color: MAROON }}>
+                    <p className="text-base font-bold leading-none" style={{ color: MAROON }}>
                       Rp {stat.terkumpul.toLocaleString('id-ID')}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground mt-1">
                       terkumpul dari {stat.trxCount} transaksi · {stat.donaturIds.size} donatur
                     </p>
                   </div>
 
                   {p.target ? (
                     <div className="space-y-1">
-                      <div className="h-2 rounded-full" style={{ backgroundColor: GOLD_SOFT }}>
+                      <div className="h-1.5 rounded-full" style={{ backgroundColor: GOLD_SOFT }}>
                         <div
-                          className="h-2 rounded-full transition-all duration-500"
-                          style={{ 
+                          className="h-1.5 rounded-full transition-all duration-500"
+                          style={{
                             backgroundColor: targetProgress >= 80 ? '#10b981' : targetProgress >= 50 ? '#f59e0b' : '#ef4444',
-                            width: `${targetProgress}%` 
+                            width: `${targetProgress}%`
                           }}
                         />
                       </div>
-                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <div className="flex justify-between text-[10px] text-muted-foreground leading-none">
                         <span>Rp {stat.terkumpul.toLocaleString('id-ID')}</span>
                         <span>Rp {p.target.toLocaleString('id-ID')}</span>
                       </div>
@@ -466,7 +463,7 @@ export default function DashboardPage() {
                           style={{ backgroundColor: GOLD, width: `${barWidth}%` }}
                         />
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-1">
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
                         {share.toFixed(1)}% dari total dana terkumpul
                       </p>
                     </div>
@@ -478,16 +475,16 @@ export default function DashboardPage() {
         </div>
 
         {/* Transaksi Terbaru */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-2 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transaksi Terbaru</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Transaksi Terbaru</p>
             <button
               onClick={() => navigate('/transaksi')}
-              className="flex items-center gap-1 text-sm font-medium transition-colors hover:opacity-70"
+              className="flex items-center gap-1 text-xs font-medium transition-colors hover:opacity-70"
               style={{ color: GOLD }}
             >
               Lihat semua
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+              <ArrowRight className="h-3 w-3" strokeWidth={2} />
             </button>
           </div>
           <Card>
@@ -495,26 +492,26 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   {['Donatur', 'Program', 'Jumlah', 'Status'].map((h) => (
-                    <TableHead key={h} className="text-xs uppercase">{h}</TableHead>
+                    <TableHead key={h} className="text-[11px] uppercase py-2 h-9">{h}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentTrx.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground text-sm py-8">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground text-xs py-6">
                       Belum ada transaksi
                     </TableCell>
                   </TableRow>
                 ) : recentTrx.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.donatur?.nama ?? '-'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{t.program?.namaProgram ?? '-'}</TableCell>
-                    <TableCell className="font-semibold" style={{ color: GOLD }}>
+                  <TableRow key={t.id} className="h-10">
+                    <TableCell className="font-medium text-xs py-2">{t.donatur?.nama ?? '-'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground py-2">{t.program?.namaProgram ?? '-'}</TableCell>
+                    <TableCell className="font-semibold text-xs py-2" style={{ color: GOLD }}>
                       Rp {Number(t.jumlah).toLocaleString('id-ID')}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANT[t.status] ?? 'outline'}>
+                    <TableCell className="py-2">
+                      <Badge variant={STATUS_VARIANT[t.status] ?? 'outline'} className="text-[10px] px-1.5 py-0">
                         {t.status}
                       </Badge>
                     </TableCell>
