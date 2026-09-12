@@ -1,15 +1,16 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { isLoggedIn } from '@/lib/auth'
 import Layout from '@/components/Layout'
 import LoginPage from '@/pages/LoginPage'
-import DashboardPage from '@/pages/DashboardPage'
-import DonaturPage from '@/pages/DonaturPage'
-import ProgramPage from '@/pages/ProgramPage'
-import TransaksiPage from '@/pages/TransaksiPage'
-import SertifikatPage from '@/pages/SertifikatPage'
-import TemplateEditorPage from '@/pages/TemplateEditorPage'
-import PengaturanPage from '@/pages/PengaturanPage'
-import StatisticsPage from '@/pages/StatisticsPage'
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
+const DonaturPage = lazy(() => import('@/pages/DonaturPage'))
+const ProgramPage = lazy(() => import('@/pages/ProgramPage'))
+const TransaksiPage = lazy(() => import('@/pages/TransaksiPage'))
+const SertifikatPage = lazy(() => import('@/pages/SertifikatPage'))
+const TemplateEditorPage = lazy(() => import('@/pages/TemplateEditorPage'))
+const PengaturanPage = lazy(() => import('@/pages/PengaturanPage'))
+const StatisticsPage = lazy(() => import('@/pages/StatisticsPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isLoggedIn()) return <Navigate to="/login" replace />
@@ -26,6 +27,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground" role="status">Memuat halaman...</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
@@ -38,5 +40,6 @@ export default function App() {
       <Route path="/statistik" element={<ProtectedLayout><StatisticsPage /></ProtectedLayout>} />
       <Route path="*" element={<Navigate to={isLoggedIn() ? '/dashboard' : '/login'} replace />} />
     </Routes>
+    </Suspense>
   )
 }

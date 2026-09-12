@@ -57,14 +57,9 @@ app.get("/", (c) => c.json({ success: true, message: "Wakaf Bareng API" }));
 // Access via: /api/cetak/:transaksiId
 // Completely outside /api/sertifikat/* so authMiddleware never runs here.
 app.get("/api/cetak/:transaksiId", async (c) => {
-  // Optimasi: Add overall timeout untuk mencegah worker hang
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000); // 15s total timeout
-
   try {
     const transaksiId = Number(c.req.param("transaksiId"));
     if (isNaN(transaksiId)) {
-      clearTimeout(timeout);
       return c.json({ success: false, message: "ID tidak valid" }, 400);
     }
 
@@ -198,7 +193,6 @@ app.get("/api/cetak/:transaksiId", async (c) => {
     );
     const filename = `${noSertifikat.replace(/\//g, "-")}.pdf`;
 
-    clearTimeout(timeout);
 
     return new Response(pdfBytes, {
       headers: {
@@ -208,7 +202,6 @@ app.get("/api/cetak/:transaksiId", async (c) => {
       },
     });
   } catch (err) {
-    clearTimeout(timeout);
     console.error("[/api/cetak] error:", err);
     const message =
       err instanceof Error ? `${err.name}: ${err.message}` : String(err);

@@ -1,5 +1,4 @@
-import { PDFDocument, rgb, StandardFonts, PDFDocument as PDFDocType } from "pdf-lib";
-import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type { TemplateSertifikat, LayoutFieldItem } from "shared";
 
 export interface RenderData {
@@ -37,25 +36,111 @@ export function rightAlignX(textWidth: number, xRight: number): number {
   return xRight - textWidth;
 }
 
-// Optimasi: Cache font instance untuk mengurangi CPU usage
-let cachedPdfDoc: PDFDocType | null = null;
-let cachedFontRegular: any = null;
-let cachedFontBold: any = null;
+// Cache only background PDFs, never donor data or mutable PDFDocument instances.
+// The byte budget is shared across all entries in this isolate.
+const backgrounds = new Map<string, { bytes: Uint8Array; expires: number }>();
+const CACHE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-async function getFonts(pdfDoc: PDFDocType) {
-  if (cachedFontRegular && cachedFontBold && cachedPdfDoc === pdfDoc) {
-    return { fontRegular: cachedFontRegular, fontBold: cachedFontBold };
+async function readBackground(url: string): Promise<Uint8Array> {
+  if (url.startsWith("data:")) {
+    const comma = url.indexOf(",");
+    if (comma < 0 || !/^data:image\/(png|jpe?g);base64$/i.test(url.slice(0, comma))) {
+      throw new Error("Data URL background harus PNG/JPG base64");
+    }
+    const encoded = url.slice(comma + 1);
+    if (encoded.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4) {
+      throw new Error("Ukuran background melebihi 5MB");
+    }
+    const binary = atob(encoded);
+    if (binary.length > MAX_IMAGE_BYTES) throw new Error("Ukuran background melebihi 5MB");
+    return Uint8Array.from(binary, c => c.charCodeAt(0));
   }
 
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok || response.headers.get("content-type")?.includes("text/html")) {
+      await response.body?.cancel();
+      throw new Error("Background harus berupa link langsung ke gambar PNG/JPG yang dapat diakses");
+    }
+    if (Number(response.headers.get("content-length")) > MAX_IMAGE_BYTES) {
+      await response.body?.cancel();
+      throw new Error("Ukuran background melebihi 5MB");
+    }
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("File background kosong");
+    const chunks: Uint8Array[] = [];
+    let length = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        length += value.byteLength;
+        if (length > MAX_IMAGE_BYTES) {
+          await reader.cancel();
+          throw new Error("Ukuran background melebihi 5MB");
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+    return bytes;
+  } finally {
+    // Keep the timeout active until the body has finished, not just the headers.
+    clearTimeout(timer);
+  }
+}
 
-  // Cache fonts for reuse
-  cachedFontRegular = fontRegular;
-  cachedFontBold = fontBold;
-  cachedPdfDoc = pdfDoc;
+async function backgroundDocument(url: string, width: number, height: number): Promise<PDFDocument> {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    throw new Error("Ukuran canvas tidak valid");
+  }
+  if (url.startsWith("data:") && url.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 64) {
+    throw new Error("Ukuran background melebihi 5MB");
+  }
+  // Hash also keeps multi-megabyte data URLs out of cache keys.
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(url));
+  const key = `${width}:${height}:${Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("")}`;
+  const now = Date.now();
+  for (const [id, entry] of backgrounds) if (entry.expires <= now) backgrounds.delete(id);
+  const cached = backgrounds.get(key);
+  if (cached) return PDFDocument.load(cached.bytes);
 
-  return { fontRegular, fontBold };
+  const bytes = await readBackground(url);
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([width, height]);
+  const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8;
+  if (!isPng && !isJpg) throw new Error("Format background harus PNG atau JPG");
+  if (isPng) {
+    if (bytes.length < 24) throw new Error("PNG tidak valid");
+    const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const pixels = header.getUint32(16) * header.getUint32(20);
+    // PNG decoding allocates several raw pixel buffers even for small files.
+    if (!pixels || pixels > 4_000_000) {
+      throw new Error("Background PNG maksimal 4 megapiksel. Perkecil gambar atau gunakan JPG.");
+    }
+  }
+  const image = isPng ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
+  page.drawImage(image, { x: 0, y: 0, width, height });
+  const prepared = await doc.save({ useObjectStreams: false });
+  if (prepared.byteLength <= CACHE_BYTES) {
+    let used = [...backgrounds.values()].reduce((sum, entry) => sum + entry.bytes.byteLength, 0);
+    for (const [id, entry] of backgrounds) {
+      if (used + prepared.byteLength <= CACHE_BYTES && backgrounds.size < 4) break;
+      backgrounds.delete(id);
+      used -= entry.bytes.byteLength;
+    }
+    backgrounds.set(key, { bytes: prepared, expires: Date.now() + 60_000 });
+  }
+  // Reload after serialization so subsequent text uses a fresh content stream.
+  return PDFDocument.load(prepared);
 }
 
 /**
@@ -75,10 +160,6 @@ export async function renderSertifikatPDF(
   const { layoutField } = template;
   const { canvasWidth, canvasHeight } = layoutField;
 
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
-  const page = pdfDoc.addPage([canvasWidth, canvasHeight]);
-
   if (!template.fileBackground || typeof template.fileBackground !== "string" || !template.fileBackground.trim()) {
     throw new Error("File background template tidak ditemukan atau kosong");
   }
@@ -92,82 +173,12 @@ export async function renderSertifikatPDF(
     bgUrl = `${baseUrl.replace(/\/+$/, "")}/${bgUrl.replace(/^\/+/, "")}`;
   }
 
-  let bgBytes: Uint8Array;
-  if (bgUrl.startsWith("data:")) {
-    // Support base64 data URLs
-    const base64Parts = bgUrl.split(",");
-    const base64Data = base64Parts[1];
-    if (!base64Data) {
-      throw new Error("Data URL background tidak valid");
-    }
-    const binaryStr = atob(base64Data);
-    bgBytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bgBytes[i] = binaryStr.charCodeAt(i);
-    }
-  } else {
-    // Fetch via HTTP with timeout to prevent worker execution hang
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout (reduced from 10s)
-    let bgRes: Response;
-    try {
-      bgRes = await fetch(bgUrl, { signal: controller.signal });
-    } catch (fetchErr: any) {
-      clearTimeout(timeout);
-      if (fetchErr.name === 'AbortError') {
-        throw new Error(`Timeout saat mengambil background dari ${bgUrl}. Pastikan URL dapat diakses dengan cepat.`);
-      }
-      throw new Error(`Gagal mengambil background dari ${bgUrl}: ${fetchErr?.message || fetchErr}`);
-    }
-    clearTimeout(timeout);
-
-    if (!bgRes.ok) {
-      throw new Error(`Gagal mengambil background dari link: ${bgUrl} (HTTP ${bgRes.status} ${bgRes.statusText})`);
-    }
-
-    const contentType = (bgRes.headers.get("content-type") || "").toLowerCase();
-    if (contentType.includes("text/html")) {
-      throw new Error(`Link background (${bgUrl}) mengembalikan halaman HTML, bukan file gambar. Pastikan URL langsung mengarah ke file gambar PNG/JPG.`);
-    }
-
-    // Optimasi: Limit background image size to prevent memory issues
-    const contentLength = bgRes.headers.get("content-length");
-    if (contentLength && Number(contentLength) > 5 * 1024 * 1024) { // 5MB limit
-      throw new Error(`Ukuran background terlalu besar (${(Number(contentLength) / 1024 / 1024).toFixed(2)}MB). Gunakan gambar kurang dari 5MB.`);
-    }
-
-    bgBytes = new Uint8Array(await bgRes.arrayBuffer());
-  }
-
-  if (bgBytes.length === 0) {
-    throw new Error("File background kosong (0 bytes)");
-  }
-
-  // Auto-detect PNG vs JPG based on magic bytes
-  const isPng = bgBytes[0] === 0x89 && bgBytes[1] === 0x50 && bgBytes[2] === 0x4e && bgBytes[3] === 0x47;
-  const isJpg = bgBytes[0] === 0xff && bgBytes[1] === 0xd8;
-
-  let bgImage;
-  if (isPng) {
-    bgImage = await pdfDoc.embedPng(bgBytes);
-  } else if (isJpg) {
-    bgImage = await pdfDoc.embedJpg(bgBytes);
-  } else {
-    try {
-      bgImage = await pdfDoc.embedPng(bgBytes);
-    } catch {
-      try {
-        bgImage = await pdfDoc.embedJpg(bgBytes);
-      } catch {
-        throw new Error("Format gambar background tidak valid. Harap gunakan format PNG atau JPG.");
-      }
-    }
-  }
-
-  page.drawImage(bgImage, { x: 0, y: 0, width: canvasWidth, height: canvasHeight });
-
-  // Optimasi: Gunakan cached fonts untuk mengurangi CPU usage
-  const { fontRegular, fontBold } = await getFonts(pdfDoc);
+  const pdfDoc = await backgroundDocument(bgUrl, canvasWidth, canvasHeight);
+  const page = pdfDoc.getPages()[0]!;
+  const [fontRegular, fontBold] = await Promise.all([
+    pdfDoc.embedFont(StandardFonts.Helvetica),
+    pdfDoc.embedFont(StandardFonts.HelveticaBold),
+  ]);
 
   function drawField(text: string, field: LayoutFieldItem): void {
     if (!text) return;
@@ -220,5 +231,5 @@ export async function renderSertifikatPDF(
     drawField(formatTanggalIndo(data.tanggalTerbit), layoutField.tanggalTerbit);
   }
 
-  return pdfDoc.save();
+  return pdfDoc.save({ useObjectStreams: false });
 }

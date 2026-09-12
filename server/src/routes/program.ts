@@ -145,29 +145,25 @@ app.get("/:id/statistik", async (c) => {
 // GET /program/statistik/summary
 app.get("/statistik/summary", async (c) => {
   const db = getDb();
-  const programs = await db.query.program.findMany({
-    where: eq(program.aktif, true),
-  });
-
-  const programStats = await Promise.all(
-    programs.map(async (p) => {
-      const transaksiList = await db.query.transaksi.findMany({
-        where: eq(transaksi.programId, p.id),
-      });
-
-      const totalTerkumpul = transaksiList
-        .filter(t => t.status === "terverifikasi")
-        .reduce((sum, t) => sum + Number(t.jumlah), 0);
-
-      return {
-        id: p.id,
-        namaProgram: p.namaProgram,
-        targetDana: p.targetDana ? Number(p.targetDana) : null,
-        totalTerkumpul,
-        kategori: p.kategori,
-      };
-    })
-  );
+  // Aggregate in PostgreSQL: one round trip, no transaction rows sent to Worker.
+  const rows = await db.select({
+    id: program.id,
+    namaProgram: program.namaProgram,
+    targetDana: program.targetDana,
+    kategori: program.kategori,
+    totalTerkumpul: sql<string>`coalesce(sum(${transaksi.jumlah}), 0)`,
+  }).from(program)
+    .leftJoin(transaksi, and(
+      eq(transaksi.programId, program.id),
+      eq(transaksi.status, "terverifikasi"),
+    ))
+    .where(eq(program.aktif, true))
+    .groupBy(program.id);
+  const programStats = rows.map(p => ({
+    ...p,
+    targetDana: p.targetDana === null ? null : Number(p.targetDana),
+    totalTerkumpul: Number(p.totalTerkumpul),
+  }));
 
   const totalTarget = programStats.reduce((sum, p) => sum + (p.targetDana || 0), 0);
   const totalTerkumpulAll = programStats.reduce((sum, p) => sum + p.totalTerkumpul, 0);
@@ -176,7 +172,7 @@ app.get("/statistik/summary", async (c) => {
     success: true,
     message: "OK",
     data: {
-      totalProgramAktif: programs.length,
+      totalProgramAktif: programStats.length,
       totalTarget,
       totalTerkumpul: totalTerkumpulAll,
       overallProgress: totalTarget > 0 ? (totalTerkumpulAll / totalTarget) * 100 : 0,

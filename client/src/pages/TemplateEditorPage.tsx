@@ -782,6 +782,7 @@ export default function TemplateEditorPage() {
               </div>
               <p className="text-[11px] text-muted-foreground">
                 Gunakan URL gambar publik (HTTPS) atau path relatif di server.
+                {' '}Disarankan JPG agar unduhan PDF lebih cepat. Maksimal 5 MB; PNG maksimal 4 megapiksel.
               </p>
 
               {/* Preview */}
